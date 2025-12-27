@@ -1,10 +1,8 @@
 
 package eu.cronmoth.createentityaddon.rendering.copycats;
 
-import com.flowpowered.math.TrigMath;
 import com.flowpowered.math.vector.Vector3f;
 import com.flowpowered.math.vector.Vector3i;
-import com.flowpowered.math.vector.Vector4f;
 
 import de.bluecolored.bluemap.core.map.TextureGallery;
 import de.bluecolored.bluemap.core.map.hires.RenderSettings;
@@ -19,14 +17,12 @@ import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Varian
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Element;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Face;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Model;
-import de.bluecolored.bluemap.core.resources.pack.resourcepack.texture.Texture;
 import de.bluecolored.bluemap.core.util.Direction;
 import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.util.math.Color;
 import de.bluecolored.bluemap.core.util.math.MatrixM4f;
 import de.bluecolored.bluemap.core.util.math.VectorM2f;
 import de.bluecolored.bluemap.core.util.math.VectorM3f;
-import de.bluecolored.bluemap.core.world.BlockProperties;
 import de.bluecolored.bluemap.core.world.LightData;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
 import de.bluecolored.bluemap.core.world.block.ExtendedBlock;
@@ -91,7 +87,11 @@ public class CopycatRenderer implements BlockRenderer {
         Direction facing = Direction.fromString(facingStr);
 
         String[] name = entity.getMaterial().getName().split(":");
+        Map<String,String> materialProperties = entity.getMaterial().getProperties();
         Model copiedModel = resourcePack.getModel(new ResourcePath<>(name[0] + ":block/" + name[1]));
+        if (name[1].equals("copycat_base")) {
+            copiedModel = resourcePack.getModel(new ResourcePath<>(name[0] + ":block/copycat_base/block"));
+        }
         if (copiedModel == null) return;
 
         int modelStart = blockModel.getStart();
@@ -99,7 +99,7 @@ public class CopycatRenderer implements BlockRenderer {
 
         if (elements != null) {
             for (Element element : elements) {
-                buildModelElement(element, blockModel.initialize(), copiedModel, half, facing);
+                buildModelElement(element, blockModel.initialize(), copiedModel, half, facing, materialProperties);
             }
         }
 
@@ -112,7 +112,7 @@ public class CopycatRenderer implements BlockRenderer {
         if (variant.isTransformed()) blockModel.transform(variant.getTransformMatrix());
     }
 
-    private void buildModelElement(Element element, TileModelView model, Model copiedModel, String half, Direction facing) {
+    private void buildModelElement(Element element, TileModelView model, Model copiedModel, String half, Direction facing, Map<String, String> materialProperties) {
         boolean isStep = half != null;
 
         Vector3f from = element.getFrom();
@@ -145,7 +145,7 @@ public class CopycatRenderer implements BlockRenderer {
         int start = model.getStart();
         for (Direction dir : Direction.values()) {
             VectorM3f[] faceCorners = getFaceCorners(c, dir);
-            face(element, dir, faceCorners[0], faceCorners[1], faceCorners[2], faceCorners[3], copiedModel);
+            face(element, dir, faceCorners[0], faceCorners[1], faceCorners[2], faceCorners[3], copiedModel, materialProperties, facing, isStep);
         }
 
         model.initialize(start);
@@ -159,7 +159,7 @@ public class CopycatRenderer implements BlockRenderer {
     private MatrixM4f buildElementTransform(Element element, boolean isStep, String half, Direction facing) {
         float offsetX = 0f;
         float offsetY = 0f;
-        float offsetZ = isStep ? 0f : 0f;
+        float offsetZ = 0f;
 
         if ("top".equalsIgnoreCase(half)) offsetY = 8f;
 
@@ -217,15 +217,16 @@ public class CopycatRenderer implements BlockRenderer {
             VectorM3f c1,
             VectorM3f c2,
             VectorM3f c3,
-            Model copiedModel
-    ) {
+            Model copiedModel,
+            Map<String, String> materialProperties,
+            Direction blockFacing, boolean isStep) {
         Face face = element.getFaces().get(dir);
         if (face == null) return;
 
-        // ----- copy face from copied model if present -----
+        String axis = materialProperties!=null ? materialProperties.get("axis"):null;
         Optional<Face> mapped = Arrays.stream(copiedModel.getElements())
                 .filter(Objects::nonNull)
-                .map(e -> e.getFaces().get(dir))
+                .map(e -> e.getFaces().get((isStep)?orientStep(blockFacing,axis, dir):orientPanel(blockFacing, axis, dir)))
                 .filter(Objects::nonNull)
                 .findFirst();
         if (mapped.isPresent()) face = mapped.get();
@@ -234,16 +235,13 @@ public class CopycatRenderer implements BlockRenderer {
         float lengthC0C1 = Math.round(vecC0C1.length()*100)/100f;
         System.out.println("Length between c0 and c1: " + lengthC0C1);
 
-// Vector from c0 to c3
+        // Vector from c0 to c3
         VectorM3f vecC0C3 = new VectorM3f(c3.x - c0.x, c3.y - c0.y, c3.z - c0.z);
         float lengthC0C3 = Math.round(vecC0C3.length()*100)/100f;
         System.out.println("Length between c0 and c3: " + lengthC0C3);
 
         float factorC0C3 = lengthC0C3 / 32;
         float factorC0C1 = lengthC0C1 / 32;
-
-
-
 
         // ----- AO -----
         float ao0 = 1f, ao1 = 1f, ao2 = 1f, ao3 = 1f;
@@ -287,9 +285,8 @@ public class CopycatRenderer implements BlockRenderer {
         int sunLight = light.getSkyLight();
         int blockLight = light.getBlockLight();
 
-// ========================
-// Bottom-left quad
-// ========================
+
+        // Bottom-left quad
         emitQuad(
                 new VHelper(c0,    uvBL0, ao0),
                 new VHelper(c0c1,  uvBL1, lerp(ao0, ao1, 0.5f)),
@@ -298,9 +295,7 @@ public class CopycatRenderer implements BlockRenderer {
                 tex, sunLight, blockLight
         );
 
-// ========================
-// Bottom-right quad (now uses TOP-LEFT UVs)
-// ========================
+        // Bottom-right quad (now uses TOP-LEFT UVs)
         emitQuad(
                 new VHelper(c0c1,  uvTL0, lerp(ao0, ao1, 0.5f)),
                 new VHelper(c1,    uvTL1, ao1),
@@ -309,9 +304,7 @@ public class CopycatRenderer implements BlockRenderer {
                 tex, sunLight, blockLight
         );
 
-// ========================
-// Top-right quad
-// ========================
+        // Top-right quad
         emitQuad(
                 new VHelper(center,uvTR0, (ao0 + ao1 + ao2 + ao3) * 0.25f),
                 new VHelper(c1c2,  uvTR1, lerp(ao1, ao2, 0.5f)),
@@ -320,9 +313,7 @@ public class CopycatRenderer implements BlockRenderer {
                 tex, sunLight, blockLight
         );
 
-// ========================
-// Top-left quad (now uses BOTTOM-RIGHT UVs)
-// ========================
+        // Top-left quad
         emitQuad(
                 new VHelper(c0c3,  uvBR0, lerp(ao0, ao3, 0.5f)),
                 new VHelper(center,uvBR1, (ao0 + ao1 + ao2 + ao3) * 0.25f),
@@ -330,6 +321,105 @@ public class CopycatRenderer implements BlockRenderer {
                 new VHelper(c3,    uvBR3, ao3),
                 tex, sunLight, blockLight
         );
+    }
+
+    private Direction orientStep(Direction facing, String axis, Direction face) {
+        if (axis==null) {
+            return face;
+        }
+        switch (axis) {
+            case "x" -> {
+                if (facing == Direction.NORTH || facing == Direction.SOUTH) {
+                    if (face == Direction.EAST || face == Direction.WEST) {
+                        return Direction.UP;
+                    } else {
+                        return Direction.WEST;
+                    }
+                } else {
+                    if (face == Direction.NORTH || face == Direction.SOUTH) {
+                        return Direction.UP;
+                    } else {
+                        return Direction.WEST;
+                    }
+                }
+            }
+            case "y" -> {
+                return face;
+            }
+            case "z" -> {
+                if (facing == Direction.NORTH || facing == Direction.SOUTH) {
+                    if (face == Direction.NORTH || face == Direction.SOUTH) {
+                        return Direction.UP;
+                    } else {
+                        return Direction.WEST;
+                    }
+                } else {
+                    if (face == Direction.EAST || face == Direction.WEST) {
+                        return Direction.UP;
+                    } else {
+                        return Direction.WEST;
+                    }
+                }
+            }
+        }
+        return facing;
+    }
+
+    private Direction orientPanel(Direction facing, String axis, Direction face) {
+        if (axis==null) {
+            return face;
+        }
+        if (axis.equals("y")) {
+            if (facing.equals(Direction.UP) || facing.equals(Direction.DOWN)) {
+                return face;
+            }
+            else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
+                return Direction.UP;
+            }
+            else {
+                return Direction.EAST;
+            }
+        } else if (axis.equals("x")) {
+            if (facing.equals(Direction.UP) || facing.equals(Direction.DOWN)) {
+                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
+                    return Direction.UP;
+                }
+                else {
+                    return Direction.EAST;
+                }
+            } else if (facing.equals(Direction.WEST) || facing.equals(Direction.EAST)) {
+                return face;
+            }
+            else {
+                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
+                    return Direction.UP;
+                }
+                else {
+                    return Direction.EAST;
+                }
+            }
+        }
+        //Z/North
+        else {
+            if (facing.equals(Direction.UP) || facing.equals(Direction.DOWN)) {
+                if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
+                    return Direction.UP;
+                }
+                else {
+                    return Direction.EAST;
+                }
+            } else if (facing.equals(Direction.NORTH) || facing.equals(Direction.SOUTH)) {
+                return face;
+            }
+            else {
+                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
+                    return Direction.UP;
+                }
+                else {
+                    return Direction.EAST;
+                }
+            }
+        }
     }
 
     private void emitQuad(
