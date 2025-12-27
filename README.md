@@ -2,3 +2,5 @@ This is a Bluemap Addon that renders the Create Contraptions in bluemap. It will
 
 
 <img width="2561" height="1440" alt="Windmill" src="https://github.com/user-attachments/assets/c8f27dd7-4eb3-4efb-a8ab-118d2499fb9e" />
+
+Copycats still have issues.
