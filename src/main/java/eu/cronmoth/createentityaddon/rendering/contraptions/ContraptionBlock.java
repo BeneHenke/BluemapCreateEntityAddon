@@ -10,6 +10,7 @@ import de.bluecolored.bluemap.core.world.block.BlockAccess;
 import eu.cronmoth.createentityaddon.rendering.contraptions.entitymodel.BlockAttribute;
 import eu.cronmoth.createentityaddon.rendering.contraptions.entitymodel.ContraptionEntity;
 import eu.cronmoth.createentityaddon.rendering.contraptions.entitymodel.PaletteAttribute;
+import eu.cronmoth.createentityaddon.rendering.copycats.entitymodel.CopycatBlockEntity;
 import lombok.Data;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,6 +39,12 @@ public class ContraptionBlock implements BlockAccess {
 
     @Override
     public @Nullable BlockEntity getBlockEntity() {
+        if (block != null && block.getData() != null && block.getData().getId().contains("copycat")) {
+            CopycatBlockEntity entity = new CopycatBlockEntity();
+            entity.setMaterial(block.getData().getMaterial());
+            return entity;
+        }
+
         return null;
     }
 

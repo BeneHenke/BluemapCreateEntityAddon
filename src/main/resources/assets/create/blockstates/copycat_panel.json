@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "": {
+      "renderer": "create:copycat",
+      "model": "create:block/copycat_base/panel"
+    }
+  }
+}
