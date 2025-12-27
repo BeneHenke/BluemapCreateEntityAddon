@@ -12,6 +12,7 @@ import de.bluecolored.bluemap.core.map.hires.block.BlockRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
 import de.bluecolored.bluemap.core.resources.BlockColorCalculatorFactory;
 import de.bluecolored.bluemap.core.resources.ResourcePath;
+import de.bluecolored.bluemap.core.resources.pack.ResourcePool;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variant;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Element;
@@ -77,7 +78,8 @@ public class CopycatRenderer implements BlockRenderer {
         this.blockModel = blockModel;
         this.blockColor = color;
         this.blockColorOpacity = 0f;
-        this.modelResource = variant.getModel().getResource(resourcePack::getModel);
+        ResourcePool<Model> models = resourcePack.getModels();
+        this.modelResource = variant.getModel().getResource(models::get);
 
         if (!(block.getBlockEntity() instanceof CopycatBlockEntity entity)) return;
         if (modelResource == null) return;
@@ -88,9 +90,9 @@ public class CopycatRenderer implements BlockRenderer {
 
         String[] name = entity.getMaterial().getName().split(":");
         Map<String,String> materialProperties = entity.getMaterial().getProperties();
-        Model copiedModel = resourcePack.getModel(new ResourcePath<>(name[0] + ":block/" + name[1]));
+        Model copiedModel = resourcePack.getModels().get(new ResourcePath<>(name[0] + ":block/" + name[1]));
         if (name[1].equals("copycat_base")) {
-            copiedModel = resourcePack.getModel(new ResourcePath<>(name[0] + ":block/copycat_base/block"));
+            copiedModel = resourcePack.getModels().get(new ResourcePath<>(name[0] + ":block/copycat_base/block"));
         }
         if (copiedModel == null) return;
 
