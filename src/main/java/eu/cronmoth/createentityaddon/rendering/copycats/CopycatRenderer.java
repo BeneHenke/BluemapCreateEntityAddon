@@ -233,12 +233,10 @@ public class CopycatRenderer implements BlockRenderer {
         // Vector from c0 to c1
         VectorM3f vecC0C1 = new VectorM3f(c1.x - c0.x, c1.y - c0.y, c1.z - c0.z);
         float lengthC0C1 = Math.round(vecC0C1.length()*100)/100f;
-        System.out.println("Length between c0 and c1: " + lengthC0C1);
 
         // Vector from c0 to c3
         VectorM3f vecC0C3 = new VectorM3f(c3.x - c0.x, c3.y - c0.y, c3.z - c0.z);
         float lengthC0C3 = Math.round(vecC0C3.length()*100)/100f;
-        System.out.println("Length between c0 and c3: " + lengthC0C3);
 
         float factorC0C3 = lengthC0C3 / 32;
         float factorC0C1 = lengthC0C1 / 32;
