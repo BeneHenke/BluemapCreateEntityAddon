@@ -44,30 +44,20 @@ public class CopycatRenderer implements BlockRenderer {
 
     private final ResourcePack resourcePack;
     private final TextureGallery textureGallery;
-    private final RenderSettings renderSettings;
-    private final BlockColorCalculatorFactory.BlockColorCalculator blockColorCalculator;
-
     private final VectorM3f[] corners = new VectorM3f[8];
-    private final VectorM2f[] rawUvs = new VectorM2f[4];
-    private final VectorM2f[] uvs = new VectorM2f[4];
 
     private BlockNeighborhood block;
     private Variant variant;
     private Model modelResource;
     private TileModelView blockModel;
-    private Color blockColor;
-    private float blockColorOpacity;
 
     private final MatrixM4f elementTransform = new MatrixM4f();
 
     public CopycatRenderer(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings) {
         this.resourcePack = resourcePack;
         this.textureGallery = textureGallery;
-        this.renderSettings = renderSettings;
-        this.blockColorCalculator = resourcePack.getColorCalculatorFactory().createCalculator();
 
         for (int i = 0; i < corners.length; i++) corners[i] = new VectorM3f(0, 0, 0);
-        for (int i = 0; i < rawUvs.length; i++) rawUvs[i] = new VectorM2f(0, 0);
     }
 
     @Override
@@ -75,8 +65,7 @@ public class CopycatRenderer implements BlockRenderer {
         this.block = block;
         this.variant = variant;
         this.blockModel = blockModel;
-        this.blockColor = color;
-        this.blockColorOpacity = 0f;
+        float blockColorOpacity = 0f;
         this.modelResource = variant.getModel().getResource(resourcePack::getModel);
 
         if (!(block.getBlockEntity() instanceof CopycatBlockEntity entity)) return;
@@ -187,7 +176,7 @@ public class CopycatRenderer implements BlockRenderer {
             }
         }
 
-        transform.translate(8f, 8f, 8f); // back to original position
+        transform.translate(8f, 8f, 8f);
         return transform;
     }
 
@@ -455,11 +444,6 @@ public class CopycatRenderer implements BlockRenderer {
 
     private static float lerp(float a, float b, float t) {
         return a + (b - a) * t;
-    }
-
-    // Rotation relative block helpers
-    private ExtendedBlock getRotationRelativeBlock(Direction direction) {
-        return getRotationRelativeBlock(direction.toVector());
     }
 
     private ExtendedBlock getRotationRelativeBlock(Vector3i direction) {
