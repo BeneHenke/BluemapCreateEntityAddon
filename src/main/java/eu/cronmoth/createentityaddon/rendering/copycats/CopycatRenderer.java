@@ -45,30 +45,20 @@ public class CopycatRenderer implements BlockRenderer {
 
     private final ResourcePack resourcePack;
     private final TextureGallery textureGallery;
-    private final RenderSettings renderSettings;
-    private final BlockColorCalculatorFactory.BlockColorCalculator blockColorCalculator;
-
     private final VectorM3f[] corners = new VectorM3f[8];
-    private final VectorM2f[] rawUvs = new VectorM2f[4];
-    private final VectorM2f[] uvs = new VectorM2f[4];
 
     private BlockNeighborhood block;
     private Variant variant;
     private Model modelResource;
     private TileModelView blockModel;
-    private Color blockColor;
-    private float blockColorOpacity;
 
     private final MatrixM4f elementTransform = new MatrixM4f();
 
     public CopycatRenderer(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings) {
         this.resourcePack = resourcePack;
         this.textureGallery = textureGallery;
-        this.renderSettings = renderSettings;
-        this.blockColorCalculator = resourcePack.getColorCalculatorFactory().createCalculator();
 
         for (int i = 0; i < corners.length; i++) corners[i] = new VectorM3f(0, 0, 0);
-        for (int i = 0; i < rawUvs.length; i++) rawUvs[i] = new VectorM2f(0, 0);
     }
 
     @Override
@@ -76,8 +66,8 @@ public class CopycatRenderer implements BlockRenderer {
         this.block = block;
         this.variant = variant;
         this.blockModel = blockModel;
-        this.blockColor = color;
-        this.blockColorOpacity = 0f;
+        float blockColorOpacity = 0f;
+        this.modelResource = variant.getModel().getResource(resourcePack::getModel);
         ResourcePool<Model> models = resourcePack.getModels();
         this.modelResource = variant.getModel().getResource(models::get);
 
@@ -189,7 +179,7 @@ public class CopycatRenderer implements BlockRenderer {
             }
         }
 
-        transform.translate(8f, 8f, 8f); // back to original position
+        transform.translate(8f, 8f, 8f);
         return transform;
     }
 
@@ -235,12 +225,10 @@ public class CopycatRenderer implements BlockRenderer {
         // Vector from c0 to c1
         VectorM3f vecC0C1 = new VectorM3f(c1.x - c0.x, c1.y - c0.y, c1.z - c0.z);
         float lengthC0C1 = Math.round(vecC0C1.length()*100)/100f;
-        System.out.println("Length between c0 and c1: " + lengthC0C1);
 
         // Vector from c0 to c3
         VectorM3f vecC0C3 = new VectorM3f(c3.x - c0.x, c3.y - c0.y, c3.z - c0.z);
         float lengthC0C3 = Math.round(vecC0C3.length()*100)/100f;
-        System.out.println("Length between c0 and c3: " + lengthC0C3);
 
         float factorC0C3 = lengthC0C3 / 32;
         float factorC0C1 = lengthC0C1 / 32;
@@ -459,11 +447,6 @@ public class CopycatRenderer implements BlockRenderer {
 
     private static float lerp(float a, float b, float t) {
         return a + (b - a) * t;
-    }
-
-    // Rotation relative block helpers
-    private ExtendedBlock getRotationRelativeBlock(Direction direction) {
-        return getRotationRelativeBlock(direction.toVector());
     }
 
     private ExtendedBlock getRotationRelativeBlock(Vector3i direction) {
