@@ -67,7 +67,6 @@ public class CopycatRenderer implements BlockRenderer {
         this.variant = variant;
         this.blockModel = blockModel;
         float blockColorOpacity = 0f;
-        this.modelResource = variant.getModel().getResource(resourcePack::getModel);
         ResourcePool<Model> models = resourcePack.getModels();
         this.modelResource = variant.getModel().getResource(models::get);
 
