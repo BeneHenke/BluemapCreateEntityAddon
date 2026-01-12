@@ -15,6 +15,9 @@ import eu.cronmoth.createentityaddon.rendering.copycats.entitymodel.CopycatBlock
 import eu.cronmoth.createentityaddon.rendering.copycats.CopycatRenderer;
 import eu.cronmoth.createentityaddon.rendering.contraptions.entitymodel.ContraptionEntity;
 import eu.cronmoth.createentityaddon.rendering.contraptions.ContraptionEntityRenderer;
+import eu.cronmoth.createentityaddon.rendering.tracks.TrackBlockType;
+import eu.cronmoth.createentityaddon.rendering.tracks.TrackRenderer;
+import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.TrackEntity;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -29,8 +32,9 @@ public class CreateEntityAddon implements Runnable {
         EntityRendererType.REGISTRY.register(ContraptionEntityRenderer.TYPE);
         EntityType.REGISTRY.register(new EntityType.Impl(new Key("create", "stationary_contraption"), ContraptionEntity.class));
         BlockRendererType.REGISTRY.register(CopycatRenderer.TYPE);
-        BlockRendererType.REGISTRY.register(CopycatRenderer.TYPE);
         BlockEntityType.REGISTRY.register(new CopycatBlockType.Impl(new Key("create", "copycat"), CopycatBlockEntity.class));
+        BlockRendererType.REGISTRY.register(TrackRenderer.TYPE);
+        BlockEntityType.REGISTRY.register(new TrackBlockType.Impl(new Key("create", "track"), TrackEntity.class));
     }
 
     @Override
