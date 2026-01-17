@@ -104,7 +104,7 @@ public class TrackRenderer implements BlockRenderer {
                 matrix
                         .identity()
                         .translate(-0.5f, -0.5f, -0.5f)
-                        .rotate(segmentT.pitch(), segmentT.yaw(), segmentT.roll())
+                        .rotateXYZ(segmentT.pitch(), segmentT.yaw(), segmentT.roll())
                         .translate(0.5f, 0.5f, 0.5f)
                         .translate((float) segment.getX(), (float) segment.getY() + ((i%4)/1000f), (float) segment.getZ());
                 blockModel.transform(matrix);
