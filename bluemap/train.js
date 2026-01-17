@@ -1,4 +1,4 @@
-const host = "http://localhost:8080";
+const host = "https://minecraft.game-analytics.net/ctm";
 let visibleThroughTerrain = true;
 
 let button;
@@ -14,8 +14,8 @@ function createMenuButton() {
         while (buttonList.firstChild) {
             buttonList.removeChild(buttonList.firstChild);
         }
-        buttonList.appendChild(createButton("Toggle Visibility", () => {scene.visible = !scene.visible;}));
-        buttonList.appendChild(createButton("Toggle visibility through terrain", () => {visibleThroughTerrain = !visibleThroughTerrain;}))
+        buttonList.appendChild(createButton("Toggle Visibility", () => { scene.visible = !scene.visible; }));
+        buttonList.appendChild(createButton("Toggle visibility through terrain", () => { visibleThroughTerrain = !visibleThroughTerrain; }))
     };
 }
 function createButton(text, onclick = null) {
@@ -32,7 +32,19 @@ function createButton(text, onclick = null) {
     return button;
 }
 createMenuButton();
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
+async function start() {
+    await sleep(0); // sleep for 1 second
+
+    fetchAndRenderNetwork();
+    connectTrainStream();
+    renderLoop();
+}
+
+start();
 setInterval(() => {
     const buttonList = document.querySelector(".side-menu .content")?.children.item(0);
     if (!buttonList) return;
@@ -95,7 +107,7 @@ let lastTrainState = new Map();
 function getCurrentWorldKey() {
     const mapName = mapViewer.map.data.name;
     const m = /\((?<name>.*)\)/.exec(mapName);
-    return m ? m.groups.name.toLowerCase() : mapName.toLowerCase();
+    return m ? m.groups.name.toLocaleLowerCase() : mapName.toLocaleLowerCase();
 }
 function getNodeMap(dimKey) {
     if (!networkData) return new Map();
@@ -530,10 +542,6 @@ function renderLoop() {
     requestAnimationFrame(renderLoop);
 }
 
-fetchAndRenderNetwork();
-connectTrainStream();
-renderLoop();
-
 let trainModelCache;
 async function loadTrainModelPRBM(url, direction) {
     if (trainModelCache.has(url)) return trainModelCache.get(url);
@@ -541,7 +549,14 @@ async function loadTrainModelPRBM(url, direction) {
     try {
         const resp = await fetch(url);
         const arrayBuffer = await resp.arrayBuffer();
-        const map = bluemap.maps[0];
+        let map;
+        bluemap.maps.forEach(bluemapmap => {
+            if (bluemapmap.hiresTileManager!=null) {
+                map = bluemapmap;
+                return;
+            }
+        });
+
         const loader = map.hiresTileManager.tileLoader.bufferGeometryLoader;
         const geometry = loader.parse(arrayBuffer);
         //rotate geometry based on assembly direction
@@ -577,7 +592,7 @@ async function getTrainModels(trainsData) {
 function rotateGeometryToDirection(geometry, assemblyDirection, targetDirection = "NORTH") {
     const directionAngles = {
         "NORTH": 0,
-        "EAST":  -Math.PI / 2,
+        "EAST": -Math.PI / 2,
         "SOUTH": -Math.PI,
         "WEST": Math.PI / 2
     };
@@ -587,11 +602,11 @@ function rotateGeometryToDirection(geometry, assemblyDirection, targetDirection 
     const rotationAngle = targetAngle - currentAngle;
 
     geometry.applyMatrix4(new THREE.Matrix4().makeRotationY(rotationAngle));
-        const offsets = {
+    const offsets = {
         "NORTH": { x: -0.5, y: 0, z: -1.5 },
-        "EAST":  { x: -0.5, y: 0, z: -0.5 },
+        "EAST": { x: -0.5, y: 0, z: -0.5 },
         "SOUTH": { x: 0.5, y: 0, z: -0.5 },
-        "WEST":  { x: 0.5, y: 0, z: -1.5 }
+        "WEST": { x: 0.5, y: 0, z: -1.5 }
     };
 
     const offset = offsets[assemblyDirection] ?? { x: 0, y: 0, z: 0 };
@@ -603,5 +618,5 @@ function rotateGeometryToDirection(geometry, assemblyDirection, targetDirection 
 
 Object.defineProperty(bluemap.mapViewer, "lastRedrawChange", {
     get: () => Date.now(),
-    set: () => {},
+    set: () => { },
 });
