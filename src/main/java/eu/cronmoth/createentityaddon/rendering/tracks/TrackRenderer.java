@@ -13,6 +13,7 @@ import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Varian
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Model;
 import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.util.math.Color;
+import de.bluecolored.bluemap.core.util.math.MatrixM4f;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
 import de.bluecolored.bluemap.core.world.block.ExtendedBlock;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Connection;
@@ -50,7 +51,6 @@ public class TrackRenderer implements BlockRenderer {
 
     @Override
     public void render(BlockNeighborhood block, Variant variant, TileModelView tileModel, Color blockColor) {
-        System.out.println("track renderer");
         this.block = block;
         this.variant = variant;
         this.blockModel = tileModel;
@@ -59,49 +59,53 @@ public class TrackRenderer implements BlockRenderer {
 
         if (!(block.getBlockEntity() instanceof TrackEntity entity)) return;
         if (entity.getConnections().isEmpty()) return;
+        for (Connection c : entity.getConnections()) {
 
-        Connection c = entity.getConnections().get(0);
-        List<Positions> pos = c.getPos();
-        Vector3d start = new Vector3d(pos.getFirst().pos[0], pos.getFirst().pos[1], pos.getFirst().pos[2]);
-        Vector3d end = new Vector3d(pos.getLast().pos[0], pos.getLast().pos[1], pos.getLast().pos[2]);
+            List<Positions> pos = c.getPos();
+            Vector3d start = new Vector3d(pos.getFirst().pos[0], pos.getFirst().pos[1], pos.getFirst().pos[2]);
+            Vector3d end = new Vector3d(pos.getLast().pos[0], pos.getLast().pos[1], pos.getLast().pos[2]);
 
-        System.out.print(start + " End: ");
-        System.out.println(end);
+            if (!shouldRender(end)) return;
 
-        if (shouldRender(end)) return;
+            List<Normals> axis = c.getAxis();
+            Vector3d axis0 = new Vector3d(axis.getFirst().v[0], axis.getFirst().v[1], axis.getFirst().v[2]);
+            Vector3d axis1 = new Vector3d(axis.getLast().v[0], axis.getLast().v[1], axis.getLast().v[2]);
 
-        List<Normals> axis = c.getAxis();
-        Vector3d axis0 = new Vector3d(axis.getFirst().v[0], axis.getFirst().v[1], axis.getFirst().v[2]);
-        Vector3d axis1 = new Vector3d(axis.getLast().v[0], axis.getLast().v[1], axis.getLast().v[2]);
+            List<Normals> normals = c.getNormal();
+            Vector3d normal0 = new Vector3d(normals.getFirst().v[0], normals.getFirst().v[1], normals.getFirst().v[2]);
+            Vector3d normal1 = new Vector3d(normals.getLast().v[0], normals.getLast().v[1], normals.getLast().v[2]);
 
-        List<Normals> normals = c.getNormal();
-        Vector3d normal0 = new Vector3d(normals.getFirst().v[0], normals.getFirst().v[1], normals.getFirst().v[2]);
-        Vector3d normal1 = new Vector3d(normals.getLast().v[0], normals.getLast().v[1], normals.getLast().v[2]);
+            List<SegmentTransform> segments = calculateBezierSegments(start, end, axis0, axis1, normal0, normal1);
+            for (int i = 0; i < segments.size(); i++) {
+                SegmentTransform segmentT = segments.get(i);
+                Vector3d segment = segmentT.position();
+                blockModel.initialize();
 
-        List<SegmentTransform> segments = calculateBezierSegments(start, end, axis0, axis1, normal0, normal1);
+                ExtendedBlock access = block.copy();
+                access.set(
+                        block.getX() + segment.getFloorX(),
+                        block.getY() + segment.getFloorY(),
+                        block.getZ() + segment.getFloorZ()
+                );
 
-        for (SegmentTransform segmentT : segments) {
-            Vector3d segment = segmentT.position();
-            System.out.println(segment);
+                ConnectionBlock connectionBlock = new ConnectionBlock(access, block.getBlockState());
+                connectionBlock.set(0, 0, 0);
 
-            blockModel.initialize();
+                BlockNeighborhood connBlockNeighbour = new BlockNeighborhood(
+                        connectionBlock, resourcePack, renderSettings, block.getDimensionType()
+                );
+                blockRenderer.render(connBlockNeighbour, blockModel, new Color());
 
-            ExtendedBlock access = block.copy();
-            access.set(
-                    block.getX() + segment.getFloorX(),
-                    block.getY() + segment.getFloorY(),
-                    block.getZ() + segment.getFloorZ()
-            );
+                MatrixM4f matrix = new MatrixM4f();
 
-            ConnectionBlock connectionBlock = new ConnectionBlock(access, block.getBlockState());
-            connectionBlock.set(0, 0, 0);
-
-            BlockNeighborhood connBlockNeighbour = new BlockNeighborhood(
-                    connectionBlock, resourcePack, renderSettings, block.getDimensionType()
-            );
-
-            blockRenderer.render(connBlockNeighbour, blockModel, new Color());
-            blockModel.translate((float) segment.getX(), (float) segment.getY(), (float) segment.getZ());
+                matrix
+                        .identity()
+                        .translate(-0.5f, -0.5f, -0.5f)
+                        .rotate(segmentT.pitch(), segmentT.yaw(), segmentT.roll())
+                        .translate(0.5f, 0.5f, 0.5f)
+                        .translate((float) segment.getX(), (float) segment.getY() + ((i%4)/1000f), (float) segment.getZ());
+                blockModel.transform(matrix);
+            }
         }
     }
 
@@ -153,11 +157,23 @@ public class TrackRenderer implements BlockRenderer {
         }
 
         List<SegmentTransform> result = new ArrayList<>(segments + 1);
-
+        Float firstYaw = null;
+        Float firstPitch = null;
         for (int i = 0; i <= segments; i++) {
             double t = (i == segments) ? 1.0 : (i * stepLUT[i] / segments);
+            Vector3d tangent = bezierDerivative(start, handle1, handle2, end, t).normalize();
+            float yawDiff = 0;
+            if (firstYaw==null) {
+                firstYaw = quantizeYawRadians(tangent);
+                firstPitch = quantizePitchRadians(tangent);
+                System.out.println("First yaw: " + Math.toDegrees(firstYaw) + ", pitch: " + Math.toDegrees(firstPitch));
+            }
+            else {
+                float yaw = (float) Math.atan2(tangent.getZ(), tangent.getX());
+                yawDiff = (float)Math.toDegrees(firstYaw-yaw);
+            }
             Vector3d position = bezier(start, handle1, handle2, end, t);
-            result.add(new SegmentTransform(position, 0, 0, 0));
+            result.add(new SegmentTransform(position, 0, 0, yawDiff));
         }
 
         return result;
@@ -182,13 +198,42 @@ public class TrackRenderer implements BlockRenderer {
                 .add(p3.sub(p2).mul(3 * t * t));
     }
 
-    private static Vector3d slerp(Vector3d a, Vector3d b, double t) {
-        double dot = a.dot(b);
-        dot = Math.max(-1.0, Math.min(1.0, dot));
+    private static float quantizeYawRadians(Vector3d tangent) {
+        double yaw = Math.atan2(tangent.getZ(), tangent.getX()); // radians
+        double step = Math.PI / 4.0;
+        double best = 0.0;
+        double bestDiff = Double.POSITIVE_INFINITY;
 
-        double theta = Math.acos(dot) * t;
-        Vector3d relative = b.sub(a.mul(dot)).normalize();
+        for (int i = 0; i < 8; i++) {
+            double candidate = i * step;
+            double diff = Math.abs(Math.atan2(Math.sin(yaw - candidate), Math.cos(yaw - candidate)));
+            if (diff < bestDiff) {
+                bestDiff = diff;
+                best = candidate;
+            }
+        }
 
-        return a.mul(Math.cos(theta)).add(relative.mul(Math.sin(theta)));
+        return (float) best;
+    }
+
+    private static float quantizePitchRadians(Vector3d tangent) {
+        double pitch = Math.atan2(
+                tangent.getY(),
+                Math.sqrt(tangent.getX() * tangent.getX() + tangent.getZ() * tangent.getZ())
+        );
+        double step = Math.PI / 4.0;
+        double best = 0.0;
+        double bestDiff = Double.POSITIVE_INFINITY;
+
+        for (int i = -2; i <= 2; i++) {
+            double candidate = i * step;
+            double diff = Math.abs(Math.atan2(Math.sin(pitch - candidate), Math.cos(pitch - candidate)));
+            if (diff < bestDiff) {
+                bestDiff = diff;
+                best = candidate;
+            }
+        }
+
+        return (float) best;
     }
 }

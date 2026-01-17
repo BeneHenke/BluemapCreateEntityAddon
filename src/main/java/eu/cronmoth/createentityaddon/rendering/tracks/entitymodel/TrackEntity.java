@@ -21,6 +21,5 @@ public class TrackEntity extends MCABlockEntity  {
     public TrackEntity() {
         super();
         trackEntities.add(this);
-        System.out.println(this.getX());
     }
 }

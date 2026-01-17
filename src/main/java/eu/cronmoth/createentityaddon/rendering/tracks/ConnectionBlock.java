@@ -44,6 +44,7 @@ public class ConnectionBlock implements BlockAccess {
     @Override
     public BlockState getBlockState() {
         if (x == 0 && y == 0 && z == 0) {
+            //return new BlockState("minecraft:dirt");
             return state;
         }
         return BlockState.AIR;
