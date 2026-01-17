@@ -94,7 +94,10 @@ public class TrackRenderer implements BlockRenderer {
                 BlockNeighborhood connBlockNeighbour = new BlockNeighborhood(
                         connectionBlock, resourcePack, renderSettings, block.getDimensionType()
                 );
-                blockRenderer.render(connBlockNeighbour, blockModel, new Color());
+                if (!(i==0 || i==segments.size()-1)) {
+                    blockRenderer.render(connBlockNeighbour, blockModel, new Color());
+                }
+
 
                 MatrixM4f matrix = new MatrixM4f();
 
