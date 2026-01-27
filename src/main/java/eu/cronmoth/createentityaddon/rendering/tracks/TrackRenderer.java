@@ -129,17 +129,30 @@ public class TrackRenderer implements BlockRenderer {
         axisStart = axisStart.normalize();
         axisEnd = axisEnd.normalize();
 
-        double handleLength = start.distance(end) / 3.0;
-        Vector3d handle1 = start.add(axisStart.mul(handleLength));
-        Vector3d handle2 = end.add(axisEnd.mul(handleLength));
+        List<SegmentTransform> result = new ArrayList<>();
+
+        // Add straight track at the start (one block)
+        Vector3d straightStartPos = start;
+        Vector3d straightStartTangent = axisStart;
+        float straightStartYaw = quantizeYawRadians(straightStartTangent);
+        float straightStartPitch = quantizePitchRadians(straightStartTangent);
+        result.add(new SegmentTransform(straightStartPos, 0, 0, 0));
+
+        // Move curve start one block forward
+        Vector3d curveStart = start.add(axisStart);
+        Vector3d curveEnd = end.add(axisEnd);
+
+        double handleLength = curveStart.distance(curveEnd) / 3.0;
+        Vector3d handle1 = curveStart.add(axisStart.mul(handleLength));
+        Vector3d handle2 = curveEnd.add(axisEnd.mul(handleLength));
 
         int scanCount = 16;
         double length = 0.0;
-        Vector3d prev = start;
+        Vector3d prev = curveStart;
 
         for (int i = 1; i <= scanCount; i++) {
             double t = i / (double) scanCount;
-            Vector3d p = bezier(start, handle1, handle2, end, t);
+            Vector3d p = bezier(curveStart, handle1, handle2, curveEnd, t);
             length += p.distance(prev);
             prev = p;
         }
@@ -149,22 +162,21 @@ public class TrackRenderer implements BlockRenderer {
         stepLUT[0] = 1.0;
 
         double accumulated = 0.0;
-        prev = start;
+        prev = curveStart;
 
         for (int i = 1; i <= segments; i++) {
             double t = i / (double) segments;
-            Vector3d p = bezier(start, handle1, handle2, end, t);
+            Vector3d p = bezier(curveStart, handle1, handle2, curveEnd, t);
             accumulated += p.distance(prev) / length;
             stepLUT[i] = t / accumulated;
             prev = p;
         }
 
-        List<SegmentTransform> result = new ArrayList<>(segments + 1);
         Float firstYaw = null;
         Float firstPitch = null;
         for (int i = 0; i <= segments; i++) {
             double t = (i == segments) ? 1.0 : (i * stepLUT[i] / segments);
-            Vector3d tangent = bezierDerivative(start, handle1, handle2, end, t).normalize();
+            Vector3d tangent = bezierDerivative(curveStart, handle1, handle2, curveEnd, t).normalize();
             float yawDiff = 0;
             if (firstYaw==null) {
                 firstYaw = quantizeYawRadians(tangent);
@@ -175,9 +187,13 @@ public class TrackRenderer implements BlockRenderer {
                 float yaw = (float) Math.atan2(tangent.getZ(), tangent.getX());
                 yawDiff = (float)Math.toDegrees(firstYaw-yaw);
             }
-            Vector3d position = bezier(start, handle1, handle2, end, t);
+            Vector3d position = bezier(curveStart, handle1, handle2, curveEnd, t);
             result.add(new SegmentTransform(position, 0, 0, yawDiff));
         }
+
+        // Add straight track at the end (one block)
+        Vector3d straightEndPos = end.add(axisEnd.mul(2.0));
+        result.add(new SegmentTransform(straightEndPos, 0, 0, 0));
 
         return result;
     }
