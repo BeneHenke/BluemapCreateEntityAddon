@@ -62,8 +62,8 @@ public class TrackRenderer implements BlockRenderer {
         for (Connection c : entity.getConnections()) {
 
             List<Positions> pos = c.getPos();
-            Vector3d start = new Vector3d(pos.getFirst().pos[0], pos.getFirst().pos[1], pos.getFirst().pos[2]);
-            Vector3d end = new Vector3d(pos.getLast().pos[0], pos.getLast().pos[1], pos.getLast().pos[2]);
+            Vector3d start = new Vector3d(pos.getFirst().getX(), pos.getFirst().getY(), pos.getFirst().getZ());
+            Vector3d end = new Vector3d(pos.getLast().getX(), pos.getLast().getY(), pos.getLast().getZ());
 
             if (!shouldRender(end)) return;
 
