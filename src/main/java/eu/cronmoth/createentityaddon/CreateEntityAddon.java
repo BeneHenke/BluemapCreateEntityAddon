@@ -36,20 +36,27 @@ public class CreateEntityAddon implements Runnable {
     @Override
     public void run() {
         addBluemapRegistryValues();
-        fileWatchers = new ArrayList<>();
-        BlueMapAPI.onEnable(api ->
-        {
-            BlueMapService service = ((BlueMapAPIImpl) api).blueMapService();
-            for (BmMap map : service.getMaps().values()) {
-                MCAWorld world = (MCAWorld) map.getWorld();
-                File dataDirectory = new File(world.getWorldFolder() + "/data");
-                if (dataDirectory.exists() && world.getDimension().getKey().getValue().equalsIgnoreCase("overworld")) {
-                    FileWatcher fileWatcher = new FileWatcher(new File(world.getWorldFolder() + "/data/create_tracks.dat"), map);
-                    fileWatcher.start();
-                    fileWatchers.add(fileWatcher);
+        System.err.println("CreateEntityAddon enabled! - More Debugging info will be printed if the file watcher fails to start.");
+        try {
+            fileWatchers = new ArrayList<>();
+            BlueMapAPI.onEnable(api ->
+            {
+                BlueMapService service = ((BlueMapAPIImpl) api).blueMapService();
+                for (BmMap map : service.getMaps().values()) {
+                    MCAWorld world = (MCAWorld) map.getWorld();
+                    File dataDirectory = new File(world.getWorldFolder() + "/data");
+                    if (dataDirectory.exists() && world.getDimension().getKey().getValue().equalsIgnoreCase("overworld")) {
+                        FileWatcher fileWatcher = new FileWatcher(new File(world.getWorldFolder() + "/data/create_tracks.dat"), map);
+                        fileWatcher.start();
+                        fileWatchers.add(fileWatcher);
+                    }
                 }
-            }
-        });
+            });
+        } catch (Exception ex) {
+            System.err.println("Failed to start FileWatcher: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+
     }
 
     private void deleteDirectory(File directoryToBeDeleted) {
