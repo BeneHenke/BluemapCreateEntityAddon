@@ -36,7 +36,6 @@ public class CreateEntityAddon implements Runnable {
     @Override
     public void run() {
         addBluemapRegistryValues();
-        System.err.println("CreateEntityAddon enabled! - More Debugging info will be printed if the file watcher fails to start.");
         try {
             fileWatchers = new ArrayList<>();
             BlueMapAPI.onEnable(api ->
@@ -49,6 +48,14 @@ public class CreateEntityAddon implements Runnable {
                         FileWatcher fileWatcher = new FileWatcher(new File(world.getWorldFolder() + "/data/create_tracks.dat"), map);
                         fileWatcher.start();
                         fileWatchers.add(fileWatcher);
+                    }
+                }
+            });
+
+            BlueMapAPI.onDisable(api -> {
+                if (fileWatchers != null) {
+                    for (FileWatcher watcher : fileWatchers) {
+                        watcher.stopThread();
                     }
                 }
             });
