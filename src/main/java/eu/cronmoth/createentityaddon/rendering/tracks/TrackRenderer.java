@@ -89,11 +89,11 @@ public class TrackRenderer implements BlockRenderer {
                 );
 
                 ConnectionBlock connectionBlock = new ConnectionBlock(access, block.getBlockState());
-                connectionBlock.set(0, 0, 0);
 
-                BlockNeighborhood connBlockNeighbour = new BlockNeighborhood(
+                BlockNeighborhood connBlockNeighbour = new ConnectionBlockNeighborhood(
                         connectionBlock, resourcePack, renderSettings, block.getDimensionType()
                 );
+                connectionBlock.set(connectionBlock.getX(), connectionBlock.getY(), connectionBlock.getZ());
                 if (!(i==0 || i==segments.size()-1)) {
                     blockRenderer.render(connBlockNeighbour, blockModel, new Color());
                 }
