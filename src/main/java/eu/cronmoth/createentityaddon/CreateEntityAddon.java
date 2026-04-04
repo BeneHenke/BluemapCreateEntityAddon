@@ -40,20 +40,34 @@ public class CreateEntityAddon implements Runnable {
     @Override
     public void run() {
         addBluemapRegistryValues();
-        fileWatchers = new ArrayList<>();
-        BlueMapAPI.onEnable(api ->
-        {
-            BlueMapService service = ((BlueMapAPIImpl) api).blueMapService();
-            for (BmMap map : service.getMaps().values()) {
-                MCAWorld world = (MCAWorld) map.getWorld();
-                File dataDirectory = new File(world.getWorldFolder() + "/data");
-                if (dataDirectory.exists() && world.getDimension().getKey().getValue().equalsIgnoreCase("overworld")) {
-                    FileWatcher fileWatcher = new FileWatcher(new File(world.getWorldFolder() + "/data/create_tracks.dat"), map);
-                    fileWatcher.start();
-                    fileWatchers.add(fileWatcher);
+        try {
+            fileWatchers = new ArrayList<>();
+            BlueMapAPI.onEnable(api ->
+            {
+                BlueMapService service = ((BlueMapAPIImpl) api).blueMapService();
+                for (BmMap map : service.getMaps().values()) {
+                    MCAWorld world = (MCAWorld) map.getWorld();
+                    File dataDirectory = new File(world.getWorldFolder() + "/data");
+                    if (dataDirectory.exists() && world.getDimension().getKey().getValue().equalsIgnoreCase("overworld")) {
+                        FileWatcher fileWatcher = new FileWatcher(new File(world.getWorldFolder() + "/data/create_tracks.dat"), map);
+                        fileWatcher.start();
+                        fileWatchers.add(fileWatcher);
+                    }
                 }
-            }
-        });
+            });
+
+            BlueMapAPI.onDisable(api -> {
+                if (fileWatchers != null) {
+                    for (FileWatcher watcher : fileWatchers) {
+                        watcher.stopThread();
+                    }
+                }
+            });
+        } catch (Exception ex) {
+            System.err.println("Failed to start FileWatcher: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+
     }
 
     private void deleteDirectory(File directoryToBeDeleted) {
