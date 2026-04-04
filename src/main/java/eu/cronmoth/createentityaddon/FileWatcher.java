@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
 import java.util.zip.GZIPInputStream;
 
 public class FileWatcher extends Thread {
@@ -37,18 +38,28 @@ public class FileWatcher extends Thread {
     public FileWatcher(File file, BmMap map) {
         this.file = file;
         this.map = map;
-        loadTrainModels();
     }
 
     public boolean isStopped() { return stop.get(); }
     public void stopThread() { stop.set(true); }
 
     public void doOnChange() {
-        loadTrainModels();
+        try {
+            loadTrainModels();
+        } catch (Throwable t) {
+            System.err.println("Error loading train models!");
+            t.printStackTrace();
+        }
     }
 
     @Override
     public void run() {
+        try {
+            loadTrainModels();
+        } catch (Throwable t) {
+            System.err.println("Error loading train models!");
+            t.printStackTrace();
+        }
         try (WatchService watcher = FileSystems.getDefault().newWatchService()) {
             Path path = file.toPath().getParent();
             path.register(watcher,
@@ -80,7 +91,8 @@ public class FileWatcher extends Thread {
                 Thread.yield();
             }
         } catch (Throwable e) {
-            // Log or rethrow the error
+            System.err.println("Error watching file: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
