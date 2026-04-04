@@ -15,14 +15,20 @@ import org.jetbrains.annotations.Nullable;
 
 @Data
 public class ConnectionBlock implements BlockAccess {
-    private int x;
-    private int y;
-    private int z;
+    private int x, xOrigin;
+    private int y, yOrigin;
+    private int z, zOrigin;
     private ExtendedBlock block;
     private BlockState state;
     public ConnectionBlock(ExtendedBlock block, BlockState state) {
         this.block=block;
         this.state=state;
+        xOrigin = block.getX();
+        yOrigin = block.getY();
+        zOrigin = block.getZ();
+        x=block.getX();
+        y=block.getY();
+        z=block.getZ();
     }
 
     @Override
@@ -43,8 +49,7 @@ public class ConnectionBlock implements BlockAccess {
 
     @Override
     public BlockState getBlockState() {
-        if (x == 0 && y == 0 && z == 0) {
-            //return new BlockState("minecraft:dirt");
+        if (x == xOrigin && y == yOrigin && z == zOrigin) {
             return state;
         }
         return BlockState.AIR;
@@ -52,6 +57,7 @@ public class ConnectionBlock implements BlockAccess {
 
     @Override
     public LightData getLightData() {
+        //return new LightData(15, 15);
         return block.getLightData();
     }
 

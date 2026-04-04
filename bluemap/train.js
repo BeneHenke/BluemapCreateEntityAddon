@@ -1,5 +1,6 @@
-const host = "https://minecraft.game-analytics.net/ctm";
-let visibleThroughTerrain = true;
+const host = "http://localhost:8080";
+let linesVisibleThroughTerrain = true;
+let trainsVisibleThroughTerrain = true;
 
 let button;
 function createMenuButton() {
@@ -14,8 +15,14 @@ function createMenuButton() {
         while (buttonList.firstChild) {
             buttonList.removeChild(buttonList.firstChild);
         }
-        buttonList.appendChild(createButton("Toggle Visibility", () => { scene.visible = !scene.visible; }));
-        buttonList.appendChild(createButton("Toggle visibility through terrain", () => { visibleThroughTerrain = !visibleThroughTerrain; }))
+        buttonList.appendChild(createButton("Toggle Lines Visibility", () => {
+            linesScene.visible = !linesScene.visible;
+        }));
+        buttonList.appendChild(createButton("Toggle Trains Visibility", () => {
+            trainsScene.visible = !trainsScene.visible;
+        }));
+        buttonList.appendChild(createButton("Toggle Lines Through Terrain", () => { linesVisibleThroughTerrain = !linesVisibleThroughTerrain; }));
+        buttonList.appendChild(createButton("Toggle Trains Through Terrain", () => { trainsVisibleThroughTerrain = !trainsVisibleThroughTerrain; }));
     };
 }
 function createButton(text, onclick = null) {
@@ -62,6 +69,8 @@ const mapViewer = window.bluemap.mapViewer;
 const renderer = mapViewer.renderer;
 const THREE = window.BlueMap.Three;
 const scene = new THREE.Scene();
+const linesScene = new THREE.Scene();
+const trainsScene = new THREE.Scene();
 
 // Line setup (prefer BlueMap's thick lines if available)
 let LineMaterial = THREE.LineBasicMaterial,
@@ -90,6 +99,29 @@ const portalMaterial = new LineMaterial({
 const stationMaterial = new THREE.MeshBasicMaterial({ color: 0x00cc00 });
 const stationGeometry = new THREE.SphereGeometry(1, 16, 16);
 
+// Network color management
+const networkColors = new Map();
+const networkMaterials = new Map();
+function getNetworkColor(networkId) {
+    if (!networkColors.has(networkId)) {
+        const hue = (networkColors.size * 137.508) % 360; // Golden angle for better color distribution
+        const color = new THREE.Color().setHSL(hue / 360, 0.7, 0.6);
+        networkColors.set(networkId, color.getHex());
+    }
+    return networkColors.get(networkId);
+}
+function getNetworkMaterial(networkId) {
+    if (!networkMaterials.has(networkId)) {
+        const material = new LineMaterial({
+            color: getNetworkColor(networkId),
+            linewidth: 2,
+            resolution: resolution.clone(),
+        });
+        networkMaterials.set(networkId, material);
+    }
+    return networkMaterials.get(networkId);
+}
+
 const trainGeometry = new THREE.BoxGeometry(5, 2, 2);
 const trainMaterial = new THREE.MeshBasicMaterial({ color: 0x3366cc });
 
@@ -103,6 +135,7 @@ const objects = {
 let networkData = null;
 let trainsData = [];
 let lastTrainState = new Map();
+const edgeToNetwork = new Map();
 
 function getCurrentWorldKey() {
     const mapName = mapViewer.map.data.name;
@@ -117,11 +150,72 @@ function getNodeMap(dimKey) {
     return new Map(nodes.map(n => [n.id, n]));
 }
 
+// Detect separate networks using Union-Find algorithm
+function detectNetworks() {
+    if (!networkData) return;
+
+    const dimKey = getCurrentWorldKey();
+    const nodeMap = getNodeMap(dimKey);
+    const edges = Array.from(networkData.edges).filter(
+        e => nodeMap.has(e.node1) && nodeMap.has(e.node2)
+    );
+
+    // Union-Find data structure
+    const parent = new Map();
+    const rank = new Map();
+
+    function find(node) {
+        if (!parent.has(node)) {
+            parent.set(node, node);
+            rank.set(node, 0);
+        }
+        if (parent.get(node) !== node) {
+            parent.set(node, find(parent.get(node)));
+        }
+        return parent.get(node);
+    }
+
+    function union(node1, node2) {
+        const root1 = find(node1);
+        const root2 = find(node2);
+
+        if (root1 === root2) return;
+
+        const rank1 = rank.get(root1) || 0;
+        const rank2 = rank.get(root2) || 0;
+
+        if (rank1 < rank2) {
+            parent.set(root1, root2);
+        } else if (rank1 > rank2) {
+            parent.set(root2, root1);
+        } else {
+            parent.set(root2, root1);
+            rank.set(root1, rank1 + 1);
+        }
+    }
+
+    // Build connected components
+    edges.forEach(edge => {
+        union(edge.node1, edge.node2);
+    });
+
+    // Assign network IDs to edges
+    edgeToNetwork.clear();
+    edges.forEach(edge => {
+        const networkRoot = find(edge.node1);
+        edgeToNetwork.set(`${edge.node1}:${edge.node2}`, networkRoot);
+    });
+
+    const uniqueNetworks = new Set(edgeToNetwork.values()).size;
+    console.log("Detected", uniqueNetworks, "separate network(s)");
+}
+
 function fetchAndRenderNetwork() {
     fetch(`${host}/network`)
         .then(resp => resp.json())
         .then(data => {
             networkData = data;
+            detectNetworks();
             renderTracks();
             renderStations();
             renderPortals();
@@ -129,7 +223,7 @@ function fetchAndRenderNetwork() {
 }
 
 function renderTracks() {
-    objects.tracks.forEach(obj => scene.remove(obj));
+    objects.tracks.forEach(obj => linesScene.remove(obj));
     objects.tracks.clear();
     if (!networkData) return;
     const dimKey = getCurrentWorldKey();
@@ -137,6 +231,7 @@ function renderTracks() {
     const edges = Array.from(networkData.edges).filter(
         e => nodeMap.has(e.node1) && nodeMap.has(e.node2)
     );
+
     edges.forEach(edge => {
         let points = [];
         if (edge.bezierConnection) {
@@ -160,23 +255,29 @@ function renderTracks() {
             const p2 = n2.dimensionLocationData.location;
             points = [p1, p2];
         }
+
+        // Get the network ID from detected networks
+        const edgeKey = `${edge.node1}:${edge.node2}`;
+        const networkId = edgeToNetwork.get(edgeKey) || 'default';
+        const material = getNetworkMaterial(networkId);
+
         let lineObj;
         if (LineGeometry === THREE.BufferGeometry) {
             const geometry = new LineGeometry();
             geometry.setFromPoints(points.map(pt => new THREE.Vector3(pt.x, pt.y, pt.z)));
-            lineObj = new LineClass(geometry, lineMaterial);
+            lineObj = new LineClass(geometry, material);
         } else {
             const geometry = new LineGeometry();
             geometry.setPositions(points.flatMap(pt => [pt.x, pt.y, pt.z]));
-            lineObj = new LineClass(geometry, lineMaterial);
+            lineObj = new LineClass(geometry, material);
         }
-        scene.add(lineObj);
+        linesScene.add(lineObj);
         objects.tracks.set(`${edge.node1}:${edge.node2}`, lineObj);
     });
 }
 
 function renderPortals() {
-    objects.portals?.forEach(obj => scene.remove(obj));
+    objects.portals?.forEach(obj => linesScene.remove(obj));
     objects.portals = new Map();
 
     const dimKey = getCurrentWorldKey();
@@ -190,14 +291,14 @@ function renderPortals() {
             const pos = node.dimensionLocationData.location;
             const mesh = new THREE.Mesh(portalGeometry, portalMaterial);
             mesh.position.set(pos.x, pos.y + 2, pos.z);
-            scene.add(mesh);
+            linesScene.add(mesh);
             objects.portals.set(node.id, mesh);
         }
     });
 }
 
 function renderStations() {
-    objects.stations?.forEach(obj => scene.remove(obj));
+    objects.stations?.forEach(obj => linesScene.remove(obj));
     objects.stations = new Map();
 
     if (!networkData || !networkData.stations) return;
@@ -240,7 +341,7 @@ function renderStations() {
         if (!pos) return;
         const mesh = new THREE.Mesh(stationGeometry, stationMaterial);
         mesh.position.set(pos.x, pos.y, pos.z);
-        scene.add(mesh);
+        linesScene.add(mesh);
         objects.stations.set(station.id, mesh);
     });
 }
@@ -462,7 +563,7 @@ function updateTrainStates() {
 
 
 function renderTrains() {
-    objects.trains.forEach(obj => scene.remove(obj));
+    objects.trains.forEach(obj => trainsScene.remove(obj));
     objects.trains.clear();
 
     const dimKey = getCurrentWorldKey();
@@ -489,7 +590,7 @@ function renderTrains() {
                     new THREE.MeshBasicMaterial({ color: 0x3366cc })
                 );
             }
-            scene.add(mesh);
+            trainsScene.add(mesh);
             objects.trains.set(`${train.id}:${carIdx}`, mesh);
         });
     });
@@ -531,16 +632,48 @@ window.addEventListener("resize", () => {
     if (portalMaterial.resolution) portalMaterial.resolution.set(window.innerWidth, window.innerHeight);
     lineMaterial.needsUpdate = true;
     portalMaterial.needsUpdate = true;
-});
 
+    // Update all network materials
+    networkMaterials.forEach(material => {
+        if (material.resolution) material.resolution.set(window.innerWidth, window.innerHeight);
+        material.needsUpdate = true;
+    });
+});
 function renderLoop() {
     animateTrains();
-    if (visibleThroughTerrain) {
-        renderer.clearDepth();
+
+    const camera = mapViewer.camera;
+
+    // neither visible through terrain
+    if (!linesVisibleThroughTerrain && !trainsVisibleThroughTerrain) {
+        renderer.render(linesScene, camera);
+        renderer.render(trainsScene, camera);
     }
-    renderer.render(scene, mapViewer.camera);
+
+    // lines only
+    else if (linesVisibleThroughTerrain && !trainsVisibleThroughTerrain) {
+        renderer.render(trainsScene, camera); // normal depth
+        renderer.clearDepth();
+        renderer.render(linesScene, camera);  // through terrain
+    }
+
+    // trains only
+    else if (!linesVisibleThroughTerrain && trainsVisibleThroughTerrain) {
+        renderer.render(linesScene, camera); // normal depth
+        renderer.clearDepth();
+        renderer.render(trainsScene, camera); // through terrain
+    }
+
+    // both visible through terrain
+    else {
+        renderer.clearDepth();
+        renderer.render(linesScene, camera);
+        renderer.render(trainsScene, camera);
+    }
+
     requestAnimationFrame(renderLoop);
 }
+
 
 let trainModelCache;
 async function loadTrainModelPRBM(url, direction) {
