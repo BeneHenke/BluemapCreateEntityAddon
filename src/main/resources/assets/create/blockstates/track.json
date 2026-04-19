@@ -93,83 +93,63 @@
       "model": "create:block/track/cross_diag"
     },
     "shape=cr_ndx,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d2_xo"
     },
     "shape=cr_ndx,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d2_xo"
     },
     "shape=cr_ndx,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d2_xo"
     },
     "shape=cr_ndx,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d2_xo"
     },
     "shape=cr_ndz,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d2_zo"
     },
     "shape=cr_ndz,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d2_zo"
     },
     "shape=cr_ndz,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d2_zo"
     },
     "shape=cr_ndz,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d2_zo"
     },
     "shape=cr_o,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_ortho"
     },
     "shape=cr_o,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_ortho"
     },
     "shape=cr_o,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_ortho"
     },
     "shape=cr_o,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_ortho"
     },
     "shape=cr_pdx,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d1_xo"
     },
     "shape=cr_pdx,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d1_xo"
     },
     "shape=cr_pdx,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d1_xo"
     },
     "shape=cr_pdx,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d1_xo"
     },
     "shape=cr_pdz,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d1_zo"
     },
     "shape=cr_pdz,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d1_zo"
     },
     "shape=cr_pdz,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d1_zo"
     },
     "shape=cr_pdz,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/cross_d1_zo"
     },
     "shape=nd,turn=false,waterlogged=false": {
@@ -221,78 +201,62 @@
       "model": "create:block/track/diag"
     },
     "shape=te,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport",
       "y": 270
     },
     "shape=te,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport",
       "y": 270
     },
     "shape=te,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport",
       "y": 270
     },
     "shape=te,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport",
       "y": 270
     },
     "shape=tn,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport",
       "y": 180
     },
     "shape=tn,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport",
       "y": 180
     },
     "shape=tn,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport",
       "y": 180
     },
     "shape=tn,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport",
       "y": 180
     },
     "shape=ts,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport"
     },
     "shape=ts,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport"
     },
     "shape=ts,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport"
     },
     "shape=ts,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport"
     },
     "shape=tw,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport",
       "y": 90
     },
     "shape=tw,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport",
       "y": 90
     },
     "shape=tw,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport",
       "y": 90
     },
     "shape=tw,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "create:block/track/teleport",
       "y": 90
     },
