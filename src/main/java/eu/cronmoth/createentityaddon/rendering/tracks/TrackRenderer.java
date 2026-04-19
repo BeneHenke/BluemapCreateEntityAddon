@@ -8,6 +8,7 @@ import de.bluecolored.bluemap.core.map.hires.block.BlockRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
 import de.bluecolored.bluemap.core.map.hires.block.BlockStateModelRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.ResourceModelRenderer;
+import de.bluecolored.bluemap.core.resources.ResourcePath;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variant;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Model;
@@ -20,11 +21,13 @@ import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Connection;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Normals;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Positions;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.TrackEntity;
+import oshi.util.tuples.Pair;
 
 import java.util.*;
 
 public class TrackRenderer implements BlockRenderer {
 
+    private static List<Pair<Vector3d, Vector3d>> bezierCache = new ArrayList<>();
     public static final BlockRendererType TYPE = new BlockRendererType.Impl(
             new Key("create", "track"),
             TrackRenderer::new
@@ -55,16 +58,45 @@ public class TrackRenderer implements BlockRenderer {
         this.variant = variant;
         this.blockModel = tileModel;
 
-        modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
+        String modelPath = variant.getModel().getFormatted();
+        if (!(variant.getModel().getFormatted().contains("x_ortho") || variant.getModel().getFormatted().contains("z_ortho"))) {
+            variant.getModel().setResource(resourcePack.getModel(new ResourcePath<>("create:block/track/x_ortho")));
+            modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
+            blockModel.translate(0.5f,0,0);
+        }
+
+        modelRenderer.render(block, variant, blockModel, blockColor);
+
+        if (modelPath.equals("create:block/track/diag")) {
+            MatrixM4f matrix = new MatrixM4f();
+            matrix
+                    .identity()
+                    .translate(-0.5f, -0.5f, -0.5f)
+                    .rotate(0, -45f, 0)
+                    .translate(0.5f, 0.5f, 0.5f);
+            blockModel.transform(matrix);
+        }
+        if (modelPath.equals("create:block/track/diag_2")) {
+            MatrixM4f matrix = new MatrixM4f();
+            matrix
+                    .identity()
+                    .translate(-0.5f, -0.5f, -0.5f)
+                    .rotate(0, 45f, 0)
+                    .translate(0.5f, 0.5f, 0.5f);
+            blockModel.transform(matrix);
+        }
 
         if (!(block.getBlockEntity() instanceof TrackEntity entity)) return;
         if (entity.getConnections().isEmpty()) return;
         for (Connection c : entity.getConnections()) {
 
             List<Positions> pos = c.getPos();
+            Vector3d startGlobal = new Vector3d(pos.getFirst().getX() + block.getX(), pos.getFirst().getY() + block.getY(), pos.getFirst().getZ() + block.getZ());
+            Vector3d endGlobal = new Vector3d(pos.getLast().getX() + block.getX(), pos.getLast().getY() + block.getY(), pos.getLast().getZ() + block.getZ());
+            bezierCache.add(new Pair<>(startGlobal, endGlobal));
+            //System.out.println("x:" + startGlobal.getX() + " y:" + startGlobal.getY() + " z:" + startGlobal.getZ() + " || x:" + endGlobal.getX() + " y:" + endGlobal.getY() + " z:" + endGlobal.getZ());
             Vector3d start = new Vector3d(pos.getFirst().getX(), pos.getFirst().getY(), pos.getFirst().getZ());
             Vector3d end = new Vector3d(pos.getLast().getX(), pos.getLast().getY(), pos.getLast().getZ());
-
             if (!shouldRender(end)) return;
 
             List<Normals> axis = c.getAxis();
@@ -97,7 +129,28 @@ public class TrackRenderer implements BlockRenderer {
                 if (!(i==0 || i==segments.size()-1)) {
                     modelRenderer.render(connBlockNeighbour, variant, blockModel, new Color());
                 }
+                /*if (i==1) {
+                    blockModel.translate(0,1, 0);
+                }*/
 
+                if (modelPath.equals("create:block/track/diag")) {
+                    MatrixM4f matrix = new MatrixM4f();
+                    matrix
+                            .identity()
+                            .translate(-0.5f, -0.5f, -0.5f)
+                            .rotate(0, -45f, 0)
+                            .translate(0.5f, 0.5f, 0.5f);
+                    blockModel.transform(matrix);
+                }
+                else if (modelPath.equals("create:block/track/diag_2")) {
+                    MatrixM4f matrix = new MatrixM4f();
+                    matrix
+                            .identity()
+                            .translate(-0.5f, -0.5f, -0.5f)
+                            .rotate(0, 45f, 0)
+                            .translate(0.5f, 0.5f, 0.5f);
+                    blockModel.transform(matrix);
+                }
 
                 MatrixM4f matrix = new MatrixM4f();
 
@@ -181,7 +234,7 @@ public class TrackRenderer implements BlockRenderer {
             if (firstYaw==null) {
                 firstYaw = quantizeYawRadians(tangent);
                 firstPitch = quantizePitchRadians(tangent);
-                System.out.println("First yaw: " + Math.toDegrees(firstYaw) + ", pitch: " + Math.toDegrees(firstPitch));
+                //System.out.println("First yaw: " + Math.toDegrees(firstYaw) + ", pitch: " + Math.toDegrees(firstPitch));
             }
             else {
                 float yaw = (float) Math.atan2(tangent.getZ(), tangent.getX());
