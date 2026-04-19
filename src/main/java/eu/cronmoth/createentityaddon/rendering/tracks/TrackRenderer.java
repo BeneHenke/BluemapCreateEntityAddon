@@ -21,13 +21,11 @@ import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Connection;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Normals;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Positions;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.TrackEntity;
-import oshi.util.tuples.Pair;
 
 import java.util.*;
 
 public class TrackRenderer implements BlockRenderer {
 
-    private static List<Pair<Vector3d, Vector3d>> bezierCache = new ArrayList<>();
     public static final BlockRendererType TYPE = new BlockRendererType.Impl(
             new Key("create", "track"),
             TrackRenderer::new
@@ -93,7 +91,6 @@ public class TrackRenderer implements BlockRenderer {
             List<Positions> pos = c.getPos();
             Vector3d startGlobal = new Vector3d(pos.getFirst().getX() + block.getX(), pos.getFirst().getY() + block.getY(), pos.getFirst().getZ() + block.getZ());
             Vector3d endGlobal = new Vector3d(pos.getLast().getX() + block.getX(), pos.getLast().getY() + block.getY(), pos.getLast().getZ() + block.getZ());
-            bezierCache.add(new Pair<>(startGlobal, endGlobal));
             //System.out.println("x:" + startGlobal.getX() + " y:" + startGlobal.getY() + " z:" + startGlobal.getZ() + " || x:" + endGlobal.getX() + " y:" + endGlobal.getY() + " z:" + endGlobal.getZ());
             Vector3d start = new Vector3d(pos.getFirst().getX(), pos.getFirst().getY(), pos.getFirst().getZ());
             Vector3d end = new Vector3d(pos.getLast().getX(), pos.getLast().getY(), pos.getLast().getZ());
