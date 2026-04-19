@@ -60,7 +60,7 @@ public class TrackRenderer implements BlockRenderer {
 
         String modelPath = variant.getModel().getFormatted();
         if (!(variant.getModel().getFormatted().contains("x_ortho") || variant.getModel().getFormatted().contains("z_ortho"))) {
-            variant.getModel().setResource(resourcePack.getModel(new ResourcePath<>("create:block/track/x_ortho")));
+            variant.getModel().setResource(resourcePack.getModels().get(new ResourcePath<>("create:block/track/x_ortho")));
             modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
             blockModel.translate(0.5f,0,0);
         }
@@ -72,7 +72,7 @@ public class TrackRenderer implements BlockRenderer {
             matrix
                     .identity()
                     .translate(-0.5f, -0.5f, -0.5f)
-                    .rotate(0, -45f, 0)
+                    .rotate(45f, 0, -1, 0)
                     .translate(0.5f, 0.5f, 0.5f);
             blockModel.transform(matrix);
         }
@@ -81,7 +81,7 @@ public class TrackRenderer implements BlockRenderer {
             matrix
                     .identity()
                     .translate(-0.5f, -0.5f, -0.5f)
-                    .rotate(0, 45f, 0)
+                    .rotate(45f, 0, 1, 0)
                     .translate(0.5f, 0.5f, 0.5f);
             blockModel.transform(matrix);
         }
@@ -138,7 +138,7 @@ public class TrackRenderer implements BlockRenderer {
                     matrix
                             .identity()
                             .translate(-0.5f, -0.5f, -0.5f)
-                            .rotate(0, -45f, 0)
+                            .rotate(45f, 0, -1, 0)
                             .translate(0.5f, 0.5f, 0.5f);
                     blockModel.transform(matrix);
                 }
@@ -147,7 +147,7 @@ public class TrackRenderer implements BlockRenderer {
                     matrix
                             .identity()
                             .translate(-0.5f, -0.5f, -0.5f)
-                            .rotate(0, 45f, 0)
+                            .rotate(45f, 0, 1, 0)
                             .translate(0.5f, 0.5f, 0.5f);
                     blockModel.transform(matrix);
                 }
