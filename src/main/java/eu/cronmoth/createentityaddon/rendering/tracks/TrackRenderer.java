@@ -180,6 +180,8 @@ public class TrackRenderer implements BlockRenderer {
     ) {
         axisStart = axisStart.normalize();
         axisEnd = axisEnd.normalize();
+        normalStart = normalStart.normalize();
+        normalEnd = normalEnd.normalize();
 
         List<SegmentTransform> result = new ArrayList<>();
 
@@ -226,21 +228,61 @@ public class TrackRenderer implements BlockRenderer {
 
         Float firstYaw = null;
         Float firstPitch = null;
+        Float firstRoll = null;
+        boolean isXAxisAligned = false;
+
         for (int i = 0; i <= segments; i++) {
             double t = (i == segments) ? 1.0 : (i * stepLUT[i] / segments);
             Vector3d tangent = bezierDerivative(curveStart, handle1, handle2, curveEnd, t).normalize();
+
+            // Interpolate normal vector along the curve
+            Vector3d normal = normalStart.mul(1.0 - t).add(normalEnd.mul(t)).normalize();
+
+            // Calculate binormal (perpendicular to both tangent and normal)
+            Vector3d binormal = tangent.cross(normal).normalize();
+
+            // Recalculate normal to ensure orthogonality
+            normal = binormal.cross(tangent).normalize();
+
             float yawDiff = 0;
-            if (firstYaw==null) {
+            float pitchDiff = 0;
+            float rollDiff = 0;
+
+            if (firstYaw == null) {
                 firstYaw = quantizeYawRadians(tangent);
                 firstPitch = quantizePitchRadians(tangent);
-                //System.out.println("First yaw: " + Math.toDegrees(firstYaw) + ", pitch: " + Math.toDegrees(firstPitch));
+                firstRoll = calculateRollRadians(normal, tangent);
+
+                double normalizedYaw = normalizeAngle(firstYaw);
+                isXAxisAligned = isCardinalDirection(normalizedYaw, 0) || isCardinalDirection(normalizedYaw, Math.PI);
             }
             else {
                 float yaw = (float) Math.atan2(tangent.getZ(), tangent.getX());
-                yawDiff = (float)Math.toDegrees(firstYaw-yaw);
+                yawDiff = (float) Math.toDegrees(firstYaw - yaw);
+
+                float pitch = (float) Math.atan2(
+                        tangent.getY(),
+                        Math.sqrt(tangent.getX() * tangent.getX() + tangent.getZ() * tangent.getZ())
+                );
+                pitchDiff = (float) Math.toDegrees(firstPitch - pitch);
+
+                float roll = calculateRollRadians(normal, tangent);
+                rollDiff = (float) Math.toDegrees(firstRoll - roll);
+
+                if (isXAxisAligned) {
+                    // X-axis aligned (East/West) - rotate in opposite direction
+                    pitchDiff = -pitchDiff;
+                    rollDiff = -rollDiff;
+                } else {
+                    // Z-axis aligned (North/South) - swap pitch and roll
+                    float temp = pitchDiff;
+                    pitchDiff = rollDiff;
+                    rollDiff = temp;
+                }
             }
+
             Vector3d position = bezier(curveStart, handle1, handle2, curveEnd, t);
-            result.add(new SegmentTransform(position, 0, 0, yawDiff));
+            result.add(new SegmentTransform(position, pitchDiff, rollDiff, yawDiff));
         }
 
         // Add straight track at the end (one block)
@@ -267,6 +309,41 @@ public class TrackRenderer implements BlockRenderer {
         return p1.sub(p0).mul(3 * u * u)
                 .add(p2.sub(p1).mul(6 * u * t))
                 .add(p3.sub(p2).mul(3 * t * t));
+    }
+
+    private static float calculateRollRadians(Vector3d normal, Vector3d tangent) {
+        // Calculate up vector (perpendicular to tangent, in the direction of normal)
+        Vector3d up = new Vector3d(0, 1, 0);
+
+        // Create binormal via cross product
+        Vector3d binormal = tangent.cross(normal).normalize();
+
+        // Recalculate normal to ensure orthogonality
+        Vector3d correctedNormal = binormal.cross(tangent).normalize();
+
+        // Calculate roll as rotation around tangent axis
+        // Project normal onto the plane perpendicular to tangent
+        Vector3d upProj = up.sub(tangent.mul(up.dot(tangent))).normalize();
+        Vector3d normalProj = correctedNormal.sub(tangent.mul(correctedNormal.dot(tangent))).normalize();
+
+        // Roll is the angle between upProj and normalProj
+        double roll = Math.atan2(
+                binormal.dot(upProj),
+                normalProj.dot(upProj)
+        );
+
+        return (float) roll;
+    }
+
+    private static double normalizeAngle(double angle) {
+        while (angle > Math.PI) angle -= 2 * Math.PI;
+        while (angle < -Math.PI) angle += 2 * Math.PI;
+        return angle;
+    }
+
+    private static boolean isCardinalDirection(double angle, double target) {
+        double diff = Math.abs(normalizeAngle(angle - target));
+        return diff < Math.PI / 8; // Within 22.5 degrees
     }
 
     private static float quantizeYawRadians(Vector3d tangent) {
