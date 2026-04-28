@@ -69,6 +69,7 @@ public class TrackRenderer implements BlockRenderer {
             MatrixM4f matrix = new MatrixM4f();
             matrix
                     .identity()
+                    .translate(-0.25f,0,0)
                     .translate(-0.5f, -0.5f, -0.5f)
                     .rotate(0, -45f, 0)
                     .translate(0.5f, 0.5f, 0.5f);
@@ -78,6 +79,7 @@ public class TrackRenderer implements BlockRenderer {
             MatrixM4f matrix = new MatrixM4f();
             matrix
                     .identity()
+                    .translate(-0.25f,0,0)
                     .translate(-0.5f, -0.5f, -0.5f)
                     .rotate(0, 45f, 0)
                     .translate(0.5f, 0.5f, 0.5f);
