@@ -91,9 +91,6 @@ public class TrackRenderer implements BlockRenderer {
         for (Connection c : entity.getConnections()) {
 
             List<Positions> pos = c.getPos();
-            Vector3d startGlobal = new Vector3d(pos.getFirst().getX() + block.getX(), pos.getFirst().getY() + block.getY(), pos.getFirst().getZ() + block.getZ());
-            Vector3d endGlobal = new Vector3d(pos.getLast().getX() + block.getX(), pos.getLast().getY() + block.getY(), pos.getLast().getZ() + block.getZ());
-            //System.out.println("x:" + startGlobal.getX() + " y:" + startGlobal.getY() + " z:" + startGlobal.getZ() + " || x:" + endGlobal.getX() + " y:" + endGlobal.getY() + " z:" + endGlobal.getZ());
             Vector3d start = new Vector3d(pos.getFirst().getX(), pos.getFirst().getY(), pos.getFirst().getZ());
             Vector3d end = new Vector3d(pos.getLast().getX(), pos.getLast().getY(), pos.getLast().getZ());
             if (!shouldRender(end)) return;
@@ -128,9 +125,6 @@ public class TrackRenderer implements BlockRenderer {
                 if (!(i==0 || i==segments.size()-1)) {
                     modelRenderer.render(connBlockNeighbour, variant, blockModel, new Color());
                 }
-                /*if (i==1) {
-                    blockModel.translate(0,1, 0);
-                }*/
 
                 if (modelPath.equals("create:block/track/diag")) {
                     MatrixM4f matrix = new MatrixM4f();
@@ -185,12 +179,7 @@ public class TrackRenderer implements BlockRenderer {
 
         List<SegmentTransform> result = new ArrayList<>();
 
-        // Add straight track at the start (one block)
-        Vector3d straightStartPos = start;
-        Vector3d straightStartTangent = axisStart;
-        float straightStartYaw = quantizeYawRadians(straightStartTangent);
-        float straightStartPitch = quantizePitchRadians(straightStartTangent);
-        result.add(new SegmentTransform(straightStartPos, 0, 0, 0));
+        result.add(new SegmentTransform(start, 0, 0, 0));
 
         // Move curve start one block forward
         Vector3d curveStart = start.add(axisStart);
