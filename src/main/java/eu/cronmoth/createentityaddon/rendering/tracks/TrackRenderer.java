@@ -41,6 +41,7 @@ public class TrackRenderer implements BlockRenderer {
     private Variant variant;
     private Model modelResource;
     private TileModelView blockModel;
+    private boolean isXAxisAligned;
 
     public TrackRenderer(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings) {
         this.resourcePack = resourcePack;
@@ -57,34 +58,49 @@ public class TrackRenderer implements BlockRenderer {
         this.blockModel = tileModel;
 
         String modelPath = variant.getModel().getFormatted();
+        int modelStart = blockModel.getStart();
+        MatrixM4f modelMatrix = cloneMatrix(variant.getTransformMatrix());
+        //reset variant orientation to combine models
+        variant.getTransformMatrix().identity();
+
         if (!(variant.getModel().getFormatted().contains("x_ortho") || variant.getModel().getFormatted().contains("z_ortho"))) {
             variant.getModel().setResource(resourcePack.getModel(new ResourcePath<>("create:block/track/x_ortho")));
             modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
-            blockModel.translate(0.5f,0,0);
+            blockModel.translate(0.5f, 0, 0);
         }
 
-        modelRenderer.render(block, variant, blockModel, blockColor);
+        modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
+        blockModel.initialize(modelStart);
 
         if (modelPath.equals("create:block/track/diag")) {
             MatrixM4f matrix = new MatrixM4f();
             matrix
                     .identity()
-                    .translate(-0.25f,0,0)
+                    .translate(-0.25f, 0, 0)
                     .translate(-0.5f, -0.5f, -0.5f)
                     .rotate(0, -45f, 0)
                     .translate(0.5f, 0.5f, 0.5f);
             blockModel.transform(matrix);
-        }
-        if (modelPath.equals("create:block/track/diag_2")) {
+        } else if (modelPath.equals("create:block/track/diag_2")) {
             MatrixM4f matrix = new MatrixM4f();
             matrix
                     .identity()
-                    .translate(-0.25f,0,0)
+                    .translate(-0.25f, 0, 0)
                     .translate(-0.5f, -0.5f, -0.5f)
                     .rotate(0, 45f, 0)
                     .translate(0.5f, 0.5f, 0.5f);
             blockModel.transform(matrix);
+        } else if (modelPath.equals("create:block/track/ascending")) {
+            MatrixM4f matrix = new MatrixM4f();
+            matrix.identity()
+                    .translate(-0.25f, 0, 0)
+                    .translate(-0.5f, -0.5f, -0.5f)
+                    .rotate(0, 90, -45)
+                    .translate(0.5f, 0.5f, 0.5f);
+            blockModel.transform(matrix);
+            blockModel.transform(modelMatrix);
         }
+        copyMatrix(modelMatrix, variant.getTransformMatrix());
 
         if (!(block.getBlockEntity() instanceof TrackEntity entity)) return;
         if (entity.getConnections().isEmpty()) return;
@@ -122,9 +138,11 @@ public class TrackRenderer implements BlockRenderer {
                         connectionBlock, resourcePack, renderSettings, block.getDimensionType()
                 );
                 connBlockNeighbour.set(connectionBlock.getX(), connectionBlock.getY(), connectionBlock.getZ());
-                if (!(i==0 || i==segments.size()-1)) {
+                variant.getTransformMatrix().identity();
+                if (!(i == 0 || i == segments.size() - 1)) {
                     modelRenderer.render(connBlockNeighbour, variant, blockModel, new Color());
                 }
+                copyMatrix(modelMatrix, variant.getTransformMatrix());
 
                 if (modelPath.equals("create:block/track/diag")) {
                     MatrixM4f matrix = new MatrixM4f();
@@ -134,25 +152,30 @@ public class TrackRenderer implements BlockRenderer {
                             .rotate(0, -45f, 0)
                             .translate(0.5f, 0.5f, 0.5f);
                     blockModel.transform(matrix);
-                }
-                else if (modelPath.equals("create:block/track/diag_2")) {
+                } else if (modelPath.equals("create:block/track/diag_2")) {
                     MatrixM4f matrix = new MatrixM4f();
-                    matrix
-                            .identity()
+                    matrix.identity()
                             .translate(-0.5f, -0.5f, -0.5f)
                             .rotate(0, 45f, 0)
                             .translate(0.5f, 0.5f, 0.5f);
                     blockModel.transform(matrix);
                 }
+                else if (modelPath.equals("create:block/track/ascending")) {
+                    MatrixM4f matrix = new MatrixM4f();
+                    matrix.identity()
+                            .translate(-0.5f, -0.5f, -0.5f)
+                            .rotate(0, 90, -45)
+                            .translate(0.5f, 0.5f, 0.5f);
+                    blockModel.transform(matrix);
+                    blockModel.transform(modelMatrix);
+                }
 
                 MatrixM4f matrix = new MatrixM4f();
-
-                matrix
-                        .identity()
+                matrix.identity()
                         .translate(-0.5f, -0.5f, -0.5f)
                         .rotate(segmentT.pitch(), segmentT.yaw(), segmentT.roll())
                         .translate(0.5f, 0.5f, 0.5f)
-                        .translate((float) segment.getX(), (float) segment.getY() + ((i%4)/1000f), (float) segment.getZ());
+                        .translate((float) segment.getX(), (float) segment.getY() + ((i % 4) / 1000f), (float) segment.getZ());
                 blockModel.transform(matrix);
             }
         }
@@ -244,8 +267,8 @@ public class TrackRenderer implements BlockRenderer {
 
                 double normalizedYaw = normalizeAngle(firstYaw);
                 isXAxisAligned = isCardinalDirection(normalizedYaw, 0) || isCardinalDirection(normalizedYaw, Math.PI);
-            }
-            else {
+
+            } else {
                 float yaw = (float) Math.atan2(tangent.getZ(), tangent.getX());
                 yawDiff = (float) Math.toDegrees(firstYaw - yaw);
 
@@ -372,5 +395,21 @@ public class TrackRenderer implements BlockRenderer {
         }
 
         return (float) best;
+    }
+
+    private MatrixM4f cloneMatrix(MatrixM4f matrix) {
+        MatrixM4f result = new MatrixM4f();
+        result.set(matrix.m00, matrix.m01, matrix.m02, matrix.m03,
+                matrix.m10, matrix.m11, matrix.m12, matrix.m13,
+                matrix.m20, matrix.m21, matrix.m22, matrix.m23,
+                matrix.m30, matrix.m31, matrix.m32, matrix.m33);
+        return result;
+    }
+
+    private void copyMatrix(MatrixM4f source, MatrixM4f target) {
+        target.set(source.m00, source.m01, source.m02, source.m03,
+                source.m10, source.m11, source.m12, source.m13,
+                source.m20, source.m21, source.m22, source.m23,
+                source.m30, source.m31, source.m32, source.m33);
     }
 }
