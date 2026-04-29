@@ -139,9 +139,7 @@ public class TrackRenderer implements BlockRenderer {
                 );
                 connBlockNeighbour.set(connectionBlock.getX(), connectionBlock.getY(), connectionBlock.getZ());
                 variant.getTransformMatrix().identity();
-                if (!(i == 0 || i == segments.size() - 1)) {
-                    modelRenderer.render(connBlockNeighbour, variant, blockModel, new Color());
-                }
+                modelRenderer.render(connBlockNeighbour, variant, blockModel, new Color());
                 copyMatrix(modelMatrix, variant.getTransformMatrix());
 
                 if (modelPath.equals("create:block/track/diag")) {
@@ -199,42 +197,41 @@ public class TrackRenderer implements BlockRenderer {
         axisEnd = axisEnd.normalize();
         normalStart = normalStart.normalize();
         normalEnd = normalEnd.normalize();
+        start = start.add(axisStart.mul(0.5));
+        end = end.add(axisEnd.mul(0.5));
 
         List<SegmentTransform> result = new ArrayList<>();
 
-        result.add(new SegmentTransform(start, 0, 0, 0));
-
-        // Move curve start one block forward
-        Vector3d curveStart = start.add(axisStart);
-        Vector3d curveEnd = end.add(axisEnd);
-
-        double handleLength = curveStart.distance(curveEnd) / 3.0;
-        Vector3d handle1 = curveStart.add(axisStart.mul(handleLength));
-        Vector3d handle2 = curveEnd.add(axisEnd.mul(handleLength));
+        // Determine handles dynamically based on angle between axes
+        double handleLength = determineHandleLength(start, end, axisStart, axisEnd);
+        Vector3d handle1 = start.add(axisStart.mul(handleLength));
+        Vector3d handle2 = end.add(axisEnd.mul(handleLength));
 
         int scanCount = 16;
         double length = 0.0;
-        Vector3d prev = curveStart;
+        Vector3d prev = start;
 
         for (int i = 1; i <= scanCount; i++) {
             double t = i / (double) scanCount;
-            Vector3d p = bezier(curveStart, handle1, handle2, curveEnd, t);
+            Vector3d p = bezier(start, handle1, handle2, end, t);
             length += p.distance(prev);
             prev = p;
         }
 
         int segments = Math.max(1, (int) (length * 2.0));
         double[] stepLUT = new double[segments + 1];
-        stepLUT[0] = 1.0;
+        stepLUT[0] = 1;
 
-        double accumulated = 0.0;
-        prev = curveStart;
+        double combinedDistance = 0.0;
+        prev = start;
 
-        for (int i = 1; i <= segments; i++) {
+        for (int i = 0; i <= segments; i++) {
             double t = i / (double) segments;
-            Vector3d p = bezier(curveStart, handle1, handle2, curveEnd, t);
-            accumulated += p.distance(prev) / length;
-            stepLUT[i] = t / accumulated;
+            Vector3d p = bezier(start, handle1, handle2, end, t);
+            if (i > 0) {
+                combinedDistance += p.distance(prev) / length;
+                stepLUT[i] = t / combinedDistance;
+            }
             prev = p;
         }
 
@@ -245,7 +242,7 @@ public class TrackRenderer implements BlockRenderer {
 
         for (int i = 0; i <= segments; i++) {
             double t = (i == segments) ? 1.0 : (i * stepLUT[i] / segments);
-            Vector3d tangent = bezierDerivative(curveStart, handle1, handle2, curveEnd, t).normalize();
+            Vector3d tangent = bezierDerivative(start, handle1, handle2, end, t).normalize();
 
             // Interpolate normal vector along the curve
             Vector3d normal = normalStart.mul(1.0 - t).add(normalEnd.mul(t)).normalize();
@@ -293,13 +290,9 @@ public class TrackRenderer implements BlockRenderer {
                 }
             }
 
-            Vector3d position = bezier(curveStart, handle1, handle2, curveEnd, t);
+            Vector3d position = bezier(start, handle1, handle2, end, t);
             result.add(new SegmentTransform(position, pitchDiff, rollDiff, yawDiff));
         }
-
-        // Add straight track at the end (one block)
-        Vector3d straightEndPos = end.add(axisEnd.mul(2.0));
-        result.add(new SegmentTransform(straightEndPos, 0, 0, 0));
 
         return result;
     }
@@ -321,6 +314,75 @@ public class TrackRenderer implements BlockRenderer {
         return p1.sub(p0).mul(3 * u * u)
                 .add(p2.sub(p1).mul(6 * u * t))
                 .add(p3.sub(p2).mul(3 * t * t));
+    }
+
+    private static double determineHandleLength(Vector3d end1, Vector3d end2, Vector3d axis1, Vector3d axis2) {
+        Vector3d cross1 = axis1.cross(new Vector3d(0, 1, 0));
+        Vector3d cross2 = axis2.cross(new Vector3d(0, 1, 0));
+
+        double a1 = Math.atan2(-axis2.getZ(), -axis2.getX());
+        double a2 = Math.atan2(axis1.getZ(), axis1.getX());
+        double angle = a1 - a2;
+
+        float circle = 2 * (float) Math.PI;
+        angle = (angle + circle) % circle;
+        if (Math.abs(circle - angle) < Math.abs(angle))
+            angle = circle - angle;
+
+        // If parallel (straight track)
+        if (Math.abs(angle) < 1e-6) {
+            double[] intersect = intersect3d(end1, end2, axis1, cross2);
+            if (intersect != null) {
+                double t = Math.abs(intersect[0]);
+                double u = Math.abs(intersect[1]);
+                double min = Math.min(t, u);
+                double max = Math.max(t, u);
+
+                if (min > 1.2 && max / min > 1 && max / min < 3) {
+                    return max - min;
+                }
+            }
+            return end2.distance(end1) / 3.0;
+        }
+
+        // Curved track
+        double n = circle / angle;
+        double factor = 4.0 / 3.0 * Math.tan(Math.PI / (2 * n));
+        double[] intersect = intersect3d(end1, end2, cross1, cross2);
+
+        if (intersect == null) {
+            return end2.distance(end1) / 3.0;
+        }
+
+        double radius = Math.abs(intersect[1]);
+        double handleLength = radius * factor;
+        if (Math.abs(handleLength) < 1e-6)
+            handleLength = 1;
+
+        return handleLength;
+    }
+
+    private static double[] intersect3d(Vector3d p1, Vector3d p2, Vector3d d1, Vector3d d2) {
+        // Find intersection of two lines in 3D space (ignoring Y component)
+        // Line 1: p1 + t * d1
+        // Line 2: p2 + u * d2
+        // Returns [t, u] or null if parallel
+
+        double d1x = d1.getX();
+        double d1z = d1.getZ();
+        double d2x = d2.getX();
+        double d2z = d2.getZ();
+
+        double det = d1x * d2z - d1z * d2x;
+        if (Math.abs(det) < 1e-6) return null; // parallel
+
+        double dx = p2.getX() - p1.getX();
+        double dz = p2.getZ() - p1.getZ();
+
+        double t = (dx * d2z - dz * d2x) / det;
+        double u = (dx * d1z - dz * d1x) / det;
+
+        return new double[]{t, u};
     }
 
     private static float calculateRollRadians(Vector3d normal, Vector3d tangent) {
