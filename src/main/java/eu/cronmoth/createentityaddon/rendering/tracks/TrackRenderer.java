@@ -15,6 +15,7 @@ import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Model;
 import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.util.math.Color;
 import de.bluecolored.bluemap.core.util.math.MatrixM4f;
+import de.bluecolored.bluemap.core.world.LightData;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
 import de.bluecolored.bluemap.core.world.block.ExtendedBlock;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Connection;
@@ -62,7 +63,6 @@ public class TrackRenderer implements BlockRenderer {
         MatrixM4f modelMatrix = cloneMatrix(variant.getTransformMatrix());
         //reset variant orientation to combine models
         variant.getTransformMatrix().identity();
-
         if (!(variant.getModel().getFormatted().contains("x_ortho") || variant.getModel().getFormatted().contains("z_ortho"))) {
             variant.getModel().setResource(resourcePack.getModel(new ResourcePath<>("create:block/track/x_ortho")));
             modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
@@ -96,7 +96,7 @@ public class TrackRenderer implements BlockRenderer {
                     .translate(-0.25f, 0, 0)
                     .translate(-0.5f, -0.5f, -0.5f)
                     .rotate(0, 90, -45)
-                    .translate(0.5f, 0.5f, 0.5f);
+                    .translate(0.5f, 1f, 0.5f);
             blockModel.transform(matrix);
             blockModel.transform(modelMatrix);
         }
@@ -109,7 +109,7 @@ public class TrackRenderer implements BlockRenderer {
             List<Positions> pos = c.getPos();
             Vector3d start = new Vector3d(pos.getFirst().getX(), pos.getFirst().getY(), pos.getFirst().getZ());
             Vector3d end = new Vector3d(pos.getLast().getX(), pos.getLast().getY(), pos.getLast().getZ());
-            if (!shouldRender(end)) return;
+            if (!shouldRender(end)) continue;
 
             List<Normals> axis = c.getAxis();
             Vector3d axis0 = new Vector3d(axis.getFirst().v[0], axis.getFirst().v[1], axis.getFirst().v[2]);
@@ -120,6 +120,7 @@ public class TrackRenderer implements BlockRenderer {
             Vector3d normal1 = new Vector3d(normals.getLast().v[0], normals.getLast().v[1], normals.getLast().v[2]);
 
             List<SegmentTransform> segments = calculateBezierSegments(start, end, axis0, axis1, normal0, normal1);
+
             for (int i = 0; i < segments.size(); i++) {
                 SegmentTransform segmentT = segments.get(i);
                 Vector3d segment = segmentT.position();
@@ -132,7 +133,7 @@ public class TrackRenderer implements BlockRenderer {
                         block.getZ() + segment.getFloorZ()
                 );
 
-                ConnectionBlock connectionBlock = new ConnectionBlock(access, block.getBlockState());
+                ConnectionBlock connectionBlock = new ConnectionBlock(access, block.getBlockState(), block.getLightData());
 
                 BlockNeighborhood connBlockNeighbour = new BlockNeighborhood(
                         connectionBlock, resourcePack, renderSettings, block.getDimensionType()
@@ -163,7 +164,7 @@ public class TrackRenderer implements BlockRenderer {
                     matrix.identity()
                             .translate(-0.5f, -0.5f, -0.5f)
                             .rotate(0, 90, -45)
-                            .translate(0.5f, 0.5f, 0.5f);
+                            .translate(0.5f, 1f, 0.5f);
                     blockModel.transform(matrix);
                     blockModel.transform(modelMatrix);
                 }
@@ -198,7 +199,21 @@ public class TrackRenderer implements BlockRenderer {
         normalStart = normalStart.normalize();
         normalEnd = normalEnd.normalize();
         start = start.add(axisStart.mul(0.5));
-        end = end.add(axisEnd.mul(0.5));
+        if (is45DegreeAngle(axisStart)) {
+            end = end.add(new Vector3d(0,-1/3.,0));
+        }
+
+
+        if (is45DegreeAngle(axisEnd)) {
+            start = start.add(axisStart.mul(0.5));
+            end = end.add(axisEnd.mul(0.5));
+            end = end.add(new Vector3d(0,0.5,0));
+        }
+        else {
+            start = start.add(axisStart.mul(0.5));
+            end = end.add(axisEnd.mul(0.5));
+
+        }
 
         List<SegmentTransform> result = new ArrayList<>();
 
@@ -473,5 +488,13 @@ public class TrackRenderer implements BlockRenderer {
                 source.m10, source.m11, source.m12, source.m13,
                 source.m20, source.m21, source.m22, source.m23,
                 source.m30, source.m31, source.m32, source.m33);
+    }
+
+    private static boolean is45DegreeAngle (Vector3d axis) {
+        float x = Math.abs((float) axis.getX());
+        float y = Math.abs((float) axis.getY());
+        float z = Math.abs((float) axis.getZ());
+
+        return (y!=0) && ((y-x < 0.01) || (y-z < 0.01));
     }
 }
