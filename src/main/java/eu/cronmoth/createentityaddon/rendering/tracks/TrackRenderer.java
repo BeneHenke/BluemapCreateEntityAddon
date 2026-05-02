@@ -94,7 +94,7 @@ public class TrackRenderer implements BlockRenderer {
             matrix.identity()
                     .translate(-0.25f, 0, 0)
                     .translate(-0.5f, -0.5f, -0.5f)
-                    .rotate(0, 90, -45)
+                    .rotate(90, 0, 1, -0.5f)
                     .translate(0.5f, 1f, 0.5f);
             blockModel.transform(matrix);
             blockModel.transform(modelMatrix);
@@ -162,7 +162,7 @@ public class TrackRenderer implements BlockRenderer {
                     MatrixM4f matrix = new MatrixM4f();
                     matrix.identity()
                             .translate(-0.5f, -0.5f, -0.5f)
-                            .rotate(0, 90, -45)
+                            .rotate(90, 0, 1, -0.5f)
                             .translate(0.5f, 1f, 0.5f);
                     blockModel.transform(matrix);
                     blockModel.transform(modelMatrix);
