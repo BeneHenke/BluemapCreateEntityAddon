@@ -42,7 +42,7 @@ public class ConnectionBlock implements BlockAccess {
 
     @Override
     public BlockAccess copy() {
-        ConnectionBlock connectionBlock = new ConnectionBlock(block.copy(), state);
+        ConnectionBlock connectionBlock = new ConnectionBlock(block.copy(), state, lightData);
         connectionBlock.x = x;
         connectionBlock.y = y;
         connectionBlock.z = z;
