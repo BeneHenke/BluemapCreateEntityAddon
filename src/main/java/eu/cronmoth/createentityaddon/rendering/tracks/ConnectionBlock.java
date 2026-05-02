@@ -1,11 +1,7 @@
 package eu.cronmoth.createentityaddon.rendering.tracks;
 
-import com.flowpowered.math.vector.Vector3d;
-import de.bluecolored.bluemap.core.map.hires.RenderSettings;
-import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.world.BlockEntity;
 import de.bluecolored.bluemap.core.world.BlockState;
-import de.bluecolored.bluemap.core.world.DimensionType;
 import de.bluecolored.bluemap.core.world.LightData;
 import de.bluecolored.bluemap.core.world.biome.Biome;
 import de.bluecolored.bluemap.core.world.block.BlockAccess;
@@ -20,7 +16,8 @@ public class ConnectionBlock implements BlockAccess {
     private int z, zOrigin;
     private ExtendedBlock block;
     private BlockState state;
-    public ConnectionBlock(ExtendedBlock block, BlockState state) {
+    private LightData lightData;
+    public ConnectionBlock(ExtendedBlock block, BlockState state, LightData lightData) {
         this.block=block;
         this.state=state;
         xOrigin = block.getX();
@@ -29,6 +26,7 @@ public class ConnectionBlock implements BlockAccess {
         x=block.getX();
         y=block.getY();
         z=block.getZ();
+        this.lightData = lightData;
     }
 
     @Override
@@ -40,7 +38,7 @@ public class ConnectionBlock implements BlockAccess {
 
     @Override
     public BlockAccess copy() {
-        ConnectionBlock connectionBlock = new ConnectionBlock(block.copy(), state);
+        ConnectionBlock connectionBlock = new ConnectionBlock(block.copy(), state, lightData);
         connectionBlock.x = x;
         connectionBlock.y = y;
         connectionBlock.z = z;
@@ -57,9 +55,9 @@ public class ConnectionBlock implements BlockAccess {
 
     @Override
     public LightData getLightData() {
-        //return new LightData(15, 15);
-        block.set(xOrigin, yOrigin, zOrigin);
-        return block.getLightData();
+        return lightData;
+//        block.set(xOrigin, yOrigin, zOrigin);
+//        return block.getLightData();
     }
 
     @Override
