@@ -42,7 +42,6 @@ public class TrackRenderer implements BlockRenderer {
     private Variant variant;
     private Model modelResource;
     private TileModelView blockModel;
-    private boolean isXAxisAligned;
 
     public TrackRenderer(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings) {
         this.resourcePack = resourcePack;
