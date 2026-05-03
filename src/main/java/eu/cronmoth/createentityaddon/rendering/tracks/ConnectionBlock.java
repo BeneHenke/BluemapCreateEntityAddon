@@ -16,8 +16,7 @@ public class ConnectionBlock implements BlockAccess {
     private int z, zOrigin;
     private ExtendedBlock block;
     private BlockState state;
-    private LightData lightData;
-    public ConnectionBlock(ExtendedBlock block, BlockState state, LightData lightData) {
+    public ConnectionBlock(ExtendedBlock block, BlockState state) {
         this.block=block;
         this.state=state;
         xOrigin = block.getX();
@@ -26,7 +25,6 @@ public class ConnectionBlock implements BlockAccess {
         x=block.getX();
         y=block.getY();
         z=block.getZ();
-        this.lightData = lightData;
     }
 
     @Override
@@ -38,7 +36,7 @@ public class ConnectionBlock implements BlockAccess {
 
     @Override
     public BlockAccess copy() {
-        ConnectionBlock connectionBlock = new ConnectionBlock(block.copy(), state, lightData);
+        ConnectionBlock connectionBlock = new ConnectionBlock(block.copy(), state);
         connectionBlock.x = x;
         connectionBlock.y = y;
         connectionBlock.z = z;
@@ -55,9 +53,9 @@ public class ConnectionBlock implements BlockAccess {
 
     @Override
     public LightData getLightData() {
-        return lightData;
+        //return lightData;
 //        block.set(xOrigin, yOrigin, zOrigin);
-//        return block.getLightData();
+        return block.getLightData();
     }
 
     @Override
