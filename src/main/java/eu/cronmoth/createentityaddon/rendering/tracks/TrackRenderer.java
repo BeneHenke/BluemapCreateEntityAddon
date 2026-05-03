@@ -127,12 +127,12 @@ public class TrackRenderer implements BlockRenderer {
 
                 ExtendedBlock access = block.copy();
                 access.set(
-                        block.getX() + segment.getFloorX(),
-                        block.getY() + segment.getFloorY(),
-                        block.getZ() + segment.getFloorZ()
+                        block.getX() + (int) Math.round(segment.getX()),
+                        block.getY() + (int) Math.round(segment.getY()),
+                        block.getZ() + (int) Math.round(segment.getZ())
                 );
 
-                ConnectionBlock connectionBlock = new ConnectionBlock(access, block.getBlockState(), block.getLightData());
+                ConnectionBlock connectionBlock = new ConnectionBlock(access, block.getBlockState());
 
                 BlockNeighborhood connBlockNeighbour = new BlockNeighborhood(
                         connectionBlock, resourcePack, renderSettings, block.getDimensionType()
