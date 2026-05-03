@@ -128,7 +128,7 @@ public class TrackRenderer implements BlockRenderer {
                 ExtendedBlock access = block.copy();
                 access.set(
                         block.getX() + (int) Math.round(segment.getX()),
-                        block.getY() + (int) Math.round(segment.getY()),
+                        block.getY() + (int) Math.round(segment.getY() + 0.25), //vertical offset to prefer upper blocks lighting data
                         block.getZ() + (int) Math.round(segment.getZ())
                 );
 
