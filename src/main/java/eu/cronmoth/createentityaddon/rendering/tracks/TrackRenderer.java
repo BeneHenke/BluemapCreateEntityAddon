@@ -11,11 +11,9 @@ import de.bluecolored.bluemap.core.map.hires.block.ResourceModelRenderer;
 import de.bluecolored.bluemap.core.resources.ResourcePath;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variant;
-import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Model;
 import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.util.math.Color;
 import de.bluecolored.bluemap.core.util.math.MatrixM4f;
-import de.bluecolored.bluemap.core.world.LightData;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
 import de.bluecolored.bluemap.core.world.block.ExtendedBlock;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Connection;
@@ -23,7 +21,8 @@ import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Normals;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Positions;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.TrackEntity;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TrackRenderer implements BlockRenderer {
 
@@ -33,14 +32,12 @@ public class TrackRenderer implements BlockRenderer {
     );
 
     private final ResourceModelRenderer modelRenderer;
-    private final BlockStateModelRenderer blockRenderer;
     private final ResourcePack resourcePack;
     private final TextureGallery textureGallery;
     private final RenderSettings renderSettings;
 
     private BlockNeighborhood block;
     private Variant variant;
-    private Model modelResource;
     private TileModelView blockModel;
 
     public TrackRenderer(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings) {
@@ -48,7 +45,6 @@ public class TrackRenderer implements BlockRenderer {
         this.textureGallery = textureGallery;
         this.renderSettings = renderSettings;
         this.modelRenderer = new ResourceModelRenderer(resourcePack, textureGallery, renderSettings);
-        this.blockRenderer = new BlockStateModelRenderer(resourcePack, textureGallery, renderSettings);
     }
 
     @Override
@@ -60,12 +56,17 @@ public class TrackRenderer implements BlockRenderer {
         String modelPath = variant.getModel().getFormatted();
         int modelStart = blockModel.getStart();
         MatrixM4f modelMatrix = cloneMatrix(variant.getTransformMatrix());
+
+        boolean isXModel = modelPath.contains("x_ortho");
+        boolean isZModel = modelPath.contains("z_ortho");
+
         //reset variant orientation to combine models
         variant.getTransformMatrix().identity();
-        if (!(variant.getModel().getFormatted().contains("x_ortho") || variant.getModel().getFormatted().contains("z_ortho"))) {
+        if (!(isXModel || isZModel)) {
             variant.getModel().setResource(resourcePack.getModel(new ResourcePath<>("create:block/track/x_ortho")));
             modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
             blockModel.translate(0.5f, 0, 0);
+            isXModel = true;
         }
 
         modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
@@ -142,11 +143,33 @@ public class TrackRenderer implements BlockRenderer {
                 modelRenderer.render(connBlockNeighbour, variant, blockModel, new Color());
                 copyMatrix(modelMatrix, variant.getTransformMatrix());
 
+                float pitchDiff = segmentT.pitch();
+                float rollDiff = segmentT.roll();
+                float yawDiff = segmentT.yaw();
+
+                if (isXModel) {
+                    // X-axis aligned (East/West) - rotate in opposite direction
+                    if (!(modelPath.equals("create:block/track/ascending") && axis0.getY()>0)) {
+                        pitchDiff = -pitchDiff;
+                        rollDiff = -rollDiff;
+                    }
+                }else {
+                    // Z-axis aligned (North/South) - swap pitch and roll
+                    float temp = pitchDiff;
+                    pitchDiff = rollDiff;
+                    rollDiff = temp;
+                    if (end.getX() > 0 && end.getZ()<0) {
+                        pitchDiff = -pitchDiff;
+                        rollDiff = -rollDiff;
+                    }
+                }
+
                 if (modelPath.equals("create:block/track/diag")) {
                     MatrixM4f matrix = new MatrixM4f();
                     matrix
                             .identity()
                             .translate(-0.5f, -0.5f, -0.5f)
+                            .rotate(pitchDiff,0,rollDiff)
                             .rotate(0, -45f, 0)
                             .translate(0.5f, 0.5f, 0.5f);
                     blockModel.transform(matrix);
@@ -154,6 +177,7 @@ public class TrackRenderer implements BlockRenderer {
                     MatrixM4f matrix = new MatrixM4f();
                     matrix.identity()
                             .translate(-0.5f, -0.5f, -0.5f)
+                            .rotate(pitchDiff,0,rollDiff)
                             .rotate(0, 45f, 0)
                             .translate(0.5f, 0.5f, 0.5f);
                     blockModel.transform(matrix);
@@ -162,16 +186,25 @@ public class TrackRenderer implements BlockRenderer {
                     MatrixM4f matrix = new MatrixM4f();
                     matrix.identity()
                             .translate(-0.5f, -0.5f, -0.5f)
+                            .rotate(pitchDiff,0,rollDiff)
                             .rotate(0, 90, -45)
                             .translate(0.5f, 1f, 0.5f);
                     blockModel.transform(matrix);
                     blockModel.transform(modelMatrix);
                 }
+                else {
+                    MatrixM4f matrix = new MatrixM4f();
+                    matrix.identity()
+                            .translate(-0.5f, -0.5f, -0.5f)
+                            .rotate(pitchDiff,0,rollDiff)
+                            .translate(0.5f, 0.5f, 0.5f);
+                    blockModel.transform(matrix);
+                }
 
                 MatrixM4f matrix = new MatrixM4f();
                 matrix.identity()
                         .translate(-0.5f, -0.5f, -0.5f)
-                        .rotate(segmentT.pitch(), segmentT.yaw(), segmentT.roll())
+                        .rotate(0, yawDiff, 0)
                         .translate(0.5f, 0.5f, 0.5f)
                         .translate((float) segment.getX(), (float) segment.getY() + ((i % 4) / 1000f), (float) segment.getZ());
                 blockModel.transform(matrix);
@@ -199,7 +232,7 @@ public class TrackRenderer implements BlockRenderer {
         normalEnd = normalEnd.normalize();
         start = start.add(axisStart.mul(0.5));
         if (is45DegreeAngle(axisStart)) {
-            end = end.add(new Vector3d(0,-1/3.,0));
+            end = end.add(new Vector3d(0,-0.5,0));
         }
 
 
@@ -252,7 +285,6 @@ public class TrackRenderer implements BlockRenderer {
         Float firstYaw = null;
         Float firstPitch = null;
         Float firstRoll = null;
-        boolean isXAxisAligned = false;
 
         for (int i = 0; i <= segments; i++) {
             double t = (i == segments) ? 1.0 : (i * stepLUT[i] / segments);
@@ -275,10 +307,6 @@ public class TrackRenderer implements BlockRenderer {
                 firstYaw = quantizeYawRadians(tangent);
                 firstPitch = quantizePitchRadians(tangent);
                 firstRoll = calculateRollRadians(normal, tangent);
-
-                double normalizedYaw = normalizeAngle(firstYaw);
-                isXAxisAligned = isCardinalDirection(normalizedYaw, 0) || isCardinalDirection(normalizedYaw, Math.PI);
-
             } else {
                 float yaw = (float) Math.atan2(tangent.getZ(), tangent.getX());
                 yawDiff = (float) Math.toDegrees(firstYaw - yaw);
@@ -291,17 +319,6 @@ public class TrackRenderer implements BlockRenderer {
 
                 float roll = calculateRollRadians(normal, tangent);
                 rollDiff = (float) Math.toDegrees(firstRoll - roll);
-
-                if (isXAxisAligned) {
-                    // X-axis aligned (East/West) - rotate in opposite direction
-                    pitchDiff = -pitchDiff;
-                    rollDiff = -rollDiff;
-                } else {
-                    // Z-axis aligned (North/South) - swap pitch and roll
-                    float temp = pitchDiff;
-                    pitchDiff = rollDiff;
-                    rollDiff = temp;
-                }
             }
 
             Vector3d position = bezier(start, handle1, handle2, end, t);
@@ -423,17 +440,6 @@ public class TrackRenderer implements BlockRenderer {
         return (float) roll;
     }
 
-    private static double normalizeAngle(double angle) {
-        while (angle > Math.PI) angle -= 2 * Math.PI;
-        while (angle < -Math.PI) angle += 2 * Math.PI;
-        return angle;
-    }
-
-    private static boolean isCardinalDirection(double angle, double target) {
-        double diff = Math.abs(normalizeAngle(angle - target));
-        return diff < Math.PI / 8; // Within 22.5 degrees
-    }
-
     private static float quantizeYawRadians(Vector3d tangent) {
         double yaw = Math.atan2(tangent.getZ(), tangent.getX()); // radians
         double step = Math.PI / 4.0;
@@ -475,10 +481,7 @@ public class TrackRenderer implements BlockRenderer {
 
     private MatrixM4f cloneMatrix(MatrixM4f matrix) {
         MatrixM4f result = new MatrixM4f();
-        result.set(matrix.m00, matrix.m01, matrix.m02, matrix.m03,
-                matrix.m10, matrix.m11, matrix.m12, matrix.m13,
-                matrix.m20, matrix.m21, matrix.m22, matrix.m23,
-                matrix.m30, matrix.m31, matrix.m32, matrix.m33);
+        copyMatrix(matrix, result);
         return result;
     }
 
@@ -489,11 +492,11 @@ public class TrackRenderer implements BlockRenderer {
                 source.m30, source.m31, source.m32, source.m33);
     }
 
-    private static boolean is45DegreeAngle (Vector3d axis) {
+    private static boolean is45DegreeAngle(Vector3d axis) {
         float x = Math.abs((float) axis.getX());
         float y = Math.abs((float) axis.getY());
         float z = Math.abs((float) axis.getZ());
 
-        return (y!=0) && ((y-x < 0.01) || (y-z < 0.01));
+        return (y != 0) && ((y - x < 0.01) || (y - z < 0.01));
     }
 }
