@@ -135,7 +135,7 @@ public class CopycatRenderer implements BlockRenderer {
         int start = model.getStart();
         for (Direction dir : Direction.values()) {
             VectorM3f[] faceCorners = getFaceCorners(corners, dir);
-            face(element, dir, faceCorners[0], faceCorners[1], faceCorners[2], faceCorners[3], copiedModel, materialProperties, facing, isStep);
+            face(element, dir, faceCorners[0], faceCorners[1], faceCorners[2], faceCorners[3], copiedModel, materialProperties, isStep);
         }
 
         model.initialize(start);
@@ -233,14 +233,14 @@ public class CopycatRenderer implements BlockRenderer {
             VectorM3f c3,
             Model copiedModel,
             Map<String, String> materialProperties,
-            Direction blockFacing, boolean isStep) {
+            boolean isStep) {
         Face face = element.getFaces().get(dir);
         if (face == null) return;
 
         String axis = materialProperties!=null ? materialProperties.get("axis"):null;
         Optional<Face> mapped = Arrays.stream(copiedModel.getElements())
                 .filter(Objects::nonNull)
-                .map(e -> e.getFaces().get((isStep)?orientStep(blockFacing,axis, dir):orientPanel(blockFacing, axis, dir)))
+                .map(e -> e.getFaces().get(resolveTextureDirection(axis, dir)))
                 //.map(e -> e.getFaces().get(dir))
                 .filter(Objects::nonNull)
                 .findFirst();
@@ -274,13 +274,11 @@ public class CopycatRenderer implements BlockRenderer {
                 (c0.y + c1.y + c2.y + c3.y)/4f,
                 (c0.z + c1.z + c2.z + c3.z)/4f
         );
-        //currently top right???
         VectorM2f uvTL0 = new VectorM2f(0, 0);
         VectorM2f uvTL1 = new VectorM2f(factorC0C1, 0);
         VectorM2f uvTL2 = new VectorM2f(factorC0C1,factorC0C3);
         VectorM2f uvTL3 = new VectorM2f(0, factorC0C3);
 
-        //currently top left???
         VectorM2f uvTR0 = new VectorM2f(1-factorC0C1, 0);
         VectorM2f uvTR1 = new VectorM2f(1, 0);
         VectorM2f uvTR2 = new VectorM2f(1, factorC0C3);
@@ -339,103 +337,42 @@ public class CopycatRenderer implements BlockRenderer {
         );
     }
 
-    private Direction orientStep(Direction facing, String axis, Direction face) {
+    private Direction resolveTextureDirection(String axis, Direction face) {
         if (axis==null) {
             return face;
         }
         switch (axis) {
             case "x" -> {
-                if (facing == Direction.NORTH || facing == Direction.SOUTH) {
-                    if (face == Direction.EAST || face == Direction.WEST) {
-                        return Direction.UP;
-                    } else {
-                        return Direction.WEST;
-                    }
-                } else {
-                    if (face == Direction.NORTH || face == Direction.SOUTH) {
-                        return Direction.UP;
-                    } else {
-                        return Direction.WEST;
-                    }
+                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
+                    return Direction.UP;
+                }
+                else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
+                    return Direction.NORTH;
+                }
+                else {
+                    return Direction.NORTH;
                 }
             }
             case "y" -> {
                 return face;
             }
             case "z" -> {
-                if (facing == Direction.NORTH || facing == Direction.SOUTH) {
-                    if (face == Direction.NORTH || face == Direction.SOUTH) {
-                        return Direction.UP;
-                    } else {
-                        return Direction.WEST;
-                    }
-                } else {
-                    if (face == Direction.EAST || face == Direction.WEST) {
-                        return Direction.UP;
-                    } else {
-                        return Direction.WEST;
-                    }
+                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
+                    return Direction.NORTH;
+                }
+                else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
+                    return Direction.UP;
+                }
+                else {
+                    return Direction.EAST;
                 }
             }
         }
-        return facing;
+        return face;
     }
 
-    private Direction orientPanel(Direction facing, String axis, Direction face) {
-        if (axis==null) {
-            return face;
-        }
-        if (axis.equals("y")) {
-            if (facing.equals(Direction.UP) || facing.equals(Direction.DOWN)) {
-                return face;
-            }
-            else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
-                return Direction.UP;
-            }
-            else {
-                return Direction.EAST;
-            }
-        } else if (axis.equals("x")) {
-            if (facing.equals(Direction.UP) || facing.equals(Direction.DOWN)) {
-                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
-                    return Direction.UP;
-                }
-                else {
-                    return Direction.EAST;
-                }
-            } else if (facing.equals(Direction.WEST) || facing.equals(Direction.EAST)) {
-                return face;
-            }
-            else {
-                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
-                    return Direction.UP;
-                }
-                else {
-                    return Direction.EAST;
-                }
-            }
-        }
-        //Z/North
-        else {
-            if (facing.equals(Direction.UP) || facing.equals(Direction.DOWN)) {
-                if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
-                    return Direction.UP;
-                }
-                else {
-                    return Direction.EAST;
-                }
-            } else if (facing.equals(Direction.NORTH) || facing.equals(Direction.SOUTH)) {
-                return face;
-            }
-            else {
-                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
-                    return Direction.UP;
-                }
-                else {
-                    return Direction.EAST;
-                }
-            }
-        }
+    private int rotateUV (Direction facing, String axis, Direction face){
+        return 0;
     }
 
     private void emitQuad(
