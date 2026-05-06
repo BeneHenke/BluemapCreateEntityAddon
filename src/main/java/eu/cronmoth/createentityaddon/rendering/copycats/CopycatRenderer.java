@@ -135,7 +135,7 @@ public class CopycatRenderer implements BlockRenderer {
         int start = model.getStart();
         for (Direction dir : Direction.values()) {
             VectorM3f[] faceCorners = getFaceCorners(corners, dir);
-            face(element, dir, faceCorners[0], faceCorners[1], faceCorners[2], faceCorners[3], copiedModel, materialProperties, isStep);
+            face(element, dir, faceCorners[0], faceCorners[1], faceCorners[2], faceCorners[3], copiedModel, materialProperties);
         }
 
         model.initialize(start);
@@ -232,15 +232,15 @@ public class CopycatRenderer implements BlockRenderer {
             VectorM3f c2,
             VectorM3f c3,
             Model copiedModel,
-            Map<String, String> materialProperties,
-            boolean isStep) {
+            Map<String, String> materialProperties) {
         Face face = element.getFaces().get(dir);
         if (face == null) return;
 
         String axis = materialProperties!=null ? materialProperties.get("axis"):null;
+        String facing = materialProperties!=null ? materialProperties.get("facing"):null;
         Optional<Face> mapped = Arrays.stream(copiedModel.getElements())
                 .filter(Objects::nonNull)
-                .map(e -> e.getFaces().get(resolveTextureDirection(axis, dir)))
+                .map(e -> e.getFaces().get(resolveTextureDirection(axis, facing, dir)))
                 //.map(e -> e.getFaces().get(dir))
                 .filter(Objects::nonNull)
                 .findFirst();
@@ -337,34 +337,32 @@ public class CopycatRenderer implements BlockRenderer {
         );
     }
 
-    private Direction resolveTextureDirection(String axis, Direction face) {
-        if (axis==null) {
+    private Direction resolveTextureDirection(String axis, String facing, Direction face) {
+        if (axis==null && facing != null) {
             return face;
         }
-        switch (axis) {
-            case "x" -> {
-                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
-                    return Direction.UP;
+        else {
+            switch (axis) {
+                case "x" -> {
+                    if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
+                        return Direction.UP;
+                    } else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
+                        return Direction.NORTH;
+                    } else {
+                        return Direction.NORTH;
+                    }
                 }
-                else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
-                    return Direction.NORTH;
+                case "y" -> {
+                    return face;
                 }
-                else {
-                    return Direction.NORTH;
-                }
-            }
-            case "y" -> {
-                return face;
-            }
-            case "z" -> {
-                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
-                    return Direction.NORTH;
-                }
-                else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
-                    return Direction.UP;
-                }
-                else {
-                    return Direction.EAST;
+                case "z" -> {
+                    if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
+                        return Direction.NORTH;
+                    } else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
+                        return Direction.UP;
+                    } else {
+                        return Direction.EAST;
+                    }
                 }
             }
         }
