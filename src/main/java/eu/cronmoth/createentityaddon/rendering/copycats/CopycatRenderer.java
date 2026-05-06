@@ -130,7 +130,6 @@ public class CopycatRenderer implements BlockRenderer {
         // Apply rotation/translation to corners
         for (int i = 0; i < 8; i++) transformCorner(corners[i], transform);
 
-        // Rekonstruiere Eckpunkte nach Transformation basierend auf Min/Max
         sortCornersByPosition(corners);
 
         int start = model.getStart();
@@ -191,7 +190,6 @@ public class CopycatRenderer implements BlockRenderer {
     }
 
     private void sortCornersByPosition(VectorM3f[] c) {
-        // Finde Min/Max pro Achse
         float minX = Float.MAX_VALUE, maxX = Float.MIN_VALUE;
         float minY = Float.MAX_VALUE, maxY = Float.MIN_VALUE;
         float minZ = Float.MAX_VALUE, maxZ = Float.MIN_VALUE;
