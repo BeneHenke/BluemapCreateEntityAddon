@@ -10,7 +10,6 @@ import de.bluecolored.bluemap.core.map.hires.TileModel;
 import de.bluecolored.bluemap.core.map.hires.TileModelView;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
-import de.bluecolored.bluemap.core.resources.BlockColorCalculatorFactory;
 import de.bluecolored.bluemap.core.resources.ResourcePath;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variant;
@@ -50,6 +49,7 @@ public class CopycatRenderer implements BlockRenderer {
     private Variant variant;
     private Model modelResource;
     private TileModelView blockModel;
+    private final VectorM3f rotationRelativeBlockDirection = new VectorM3f(0, 0, 0);
 
     private final MatrixM4f elementTransform = new MatrixM4f();
 
@@ -114,26 +114,28 @@ public class CopycatRenderer implements BlockRenderer {
         float maxY = Math.max(from.getY(), to.getY());
         float maxZ = Math.max(from.getZ(), to.getZ());
 
-        // Compute cube corners
-        VectorM3f[] c = corners;
-        c[0].set(minX, minY, minZ);
-        c[1].set(minX, minY, maxZ);
-        c[2].set(maxX, minY, minZ);
-        c[3].set(maxX, minY, maxZ);
-        c[4].set(minX, maxY, minZ);
-        c[5].set(minX, maxY, maxZ);
-        c[6].set(maxX, maxY, minZ);
-        c[7].set(maxX, maxY, maxZ);
+        // Compute cube corners (ursprüngliche Position vor Transformation)
+        corners[0].set(minX, minY, minZ);
+        corners[1].set(minX, minY, maxZ);
+        corners[2].set(maxX, minY, minZ);
+        corners[3].set(maxX, minY, maxZ);
+        corners[4].set(minX, maxY, minZ);
+        corners[5].set(minX, maxY, maxZ);
+        corners[6].set(maxX, maxY, minZ);
+        corners[7].set(maxX, maxY, maxZ);
 
-        // Build transform matrix before faces
+        // Build transform matrix
         MatrixM4f transform = buildElementTransform(element, isStep, half, facing);
 
         // Apply rotation/translation to corners
-        for (int i = 0; i < 8; i++) transformCorner(c[i], transform);
+        for (int i = 0; i < 8; i++) transformCorner(corners[i], transform);
+
+        // Rekonstruiere Eckpunkte nach Transformation basierend auf Min/Max
+        sortCornersByPosition(corners);
 
         int start = model.getStart();
         for (Direction dir : Direction.values()) {
-            VectorM3f[] faceCorners = getFaceCorners(c, dir);
+            VectorM3f[] faceCorners = getFaceCorners(corners, dir);
             face(element, dir, faceCorners[0], faceCorners[1], faceCorners[2], faceCorners[3], copiedModel, materialProperties, facing, isStep);
         }
 
@@ -188,14 +190,39 @@ public class CopycatRenderer implements BlockRenderer {
         v.set(newX, newY, newZ);
     }
 
+    private void sortCornersByPosition(VectorM3f[] c) {
+        // Finde Min/Max pro Achse
+        float minX = Float.MAX_VALUE, maxX = Float.MIN_VALUE;
+        float minY = Float.MAX_VALUE, maxY = Float.MIN_VALUE;
+        float minZ = Float.MAX_VALUE, maxZ = Float.MIN_VALUE;
+
+        for (VectorM3f corner : c) {
+            minX = Math.min(minX, corner.x);
+            maxX = Math.max(maxX, corner.x);
+            minY = Math.min(minY, corner.y);
+            maxY = Math.max(maxY, corner.y);
+            minZ = Math.min(minZ, corner.z);
+            maxZ = Math.max(maxZ, corner.z);
+        }
+
+        c[0].set(minX, minY, minZ);
+        c[1].set(minX, minY, maxZ);
+        c[2].set(maxX, minY, maxZ);
+        c[3].set(maxX, minY, minZ);
+        c[4].set(minX, maxY, minZ);
+        c[5].set(minX, maxY, maxZ);
+        c[6].set(maxX, maxY, maxZ);
+        c[7].set(maxX, maxY, minZ);
+    }
+
     private VectorM3f[] getFaceCorners(VectorM3f[] c, Direction dir) {
         return switch (dir) {
-            case DOWN -> new VectorM3f[]{c[0], c[2], c[3], c[1]};
-            case UP -> new VectorM3f[]{c[5], c[7], c[6], c[4]};
-            case NORTH -> new VectorM3f[]{c[2], c[0], c[4], c[6]};
-            case SOUTH -> new VectorM3f[]{c[1], c[3], c[7], c[5]};
-            case WEST -> new VectorM3f[]{c[0], c[1], c[5], c[4]};
-            case EAST -> new VectorM3f[]{c[3], c[2], c[6], c[7]};
+            case DOWN -> new VectorM3f[]{c[0], c[3], c[2], c[1]};     // Boden: minY (von außen unten)
+            case UP -> new VectorM3f[]{c[5], c[6], c[7], c[4]};       // Decke: maxY (von außen oben)
+            case NORTH -> new VectorM3f[]{c[4], c[7], c[3], c[0]};    // Vorne: minZ (von außen, CW)
+            case SOUTH -> new VectorM3f[]{c[6], c[5], c[1], c[2]};    // Hinten: maxZ (von außen, CW)
+            case WEST -> new VectorM3f[]{c[5], c[4], c[0], c[1]};     // Links: minX (von außen, CW)
+            case EAST -> new VectorM3f[]{c[7], c[6], c[2], c[3]};     // Rechts: maxX (von außen, CW)
         };
     }
 
@@ -216,9 +243,11 @@ public class CopycatRenderer implements BlockRenderer {
         Optional<Face> mapped = Arrays.stream(copiedModel.getElements())
                 .filter(Objects::nonNull)
                 .map(e -> e.getFaces().get((isStep)?orientStep(blockFacing,axis, dir):orientPanel(blockFacing, axis, dir)))
+                //.map(e -> e.getFaces().get(dir))
                 .filter(Objects::nonNull)
                 .findFirst();
         if (mapped.isPresent()) face = mapped.get();
+
         // Vector from c0 to c1
         VectorM3f vecC0C1 = new VectorM3f(c1.x - c0.x, c1.y - c0.y, c1.z - c0.z);
         float lengthC0C1 = Math.round(vecC0C1.length()*100)/100f;
@@ -247,25 +276,27 @@ public class CopycatRenderer implements BlockRenderer {
                 (c0.y + c1.y + c2.y + c3.y)/4f,
                 (c0.z + c1.z + c2.z + c3.z)/4f
         );
-        VectorM2f uvBL0 = new VectorM2f(0, 0);
-        VectorM2f uvBL1 = new VectorM2f(factorC0C1, 0);
-        VectorM2f uvBL2 = new VectorM2f(factorC0C1,factorC0C3);
-        VectorM2f uvBL3 = new VectorM2f(0, factorC0C3);
+        //currently top right???
+        VectorM2f uvTL0 = new VectorM2f(0, 0);
+        VectorM2f uvTL1 = new VectorM2f(factorC0C1, 0);
+        VectorM2f uvTL2 = new VectorM2f(factorC0C1,factorC0C3);
+        VectorM2f uvTL3 = new VectorM2f(0, factorC0C3);
 
-        VectorM2f uvBR0 = new VectorM2f(0, 1-factorC0C3);
-        VectorM2f uvBR1 = new VectorM2f(factorC0C1, 1-factorC0C3);
-        VectorM2f uvBR2 = new VectorM2f(factorC0C1, 1);
-        VectorM2f uvBR3 = new VectorM2f(0, 1);
+        //currently top left???
+        VectorM2f uvTR0 = new VectorM2f(1-factorC0C1, 0);
+        VectorM2f uvTR1 = new VectorM2f(1, 0);
+        VectorM2f uvTR2 = new VectorM2f(1, factorC0C3);
+        VectorM2f uvTR3 = new VectorM2f(1-factorC0C1, factorC0C3);
 
-        VectorM2f uvTL0 = new VectorM2f(1-factorC0C1, 0);
-        VectorM2f uvTL1 = new VectorM2f(1, 0);
-        VectorM2f uvTL2 = new VectorM2f(1, factorC0C3);
-        VectorM2f uvTL3 = new VectorM2f(1-factorC0C1, factorC0C3);
+        VectorM2f uvBL0 = new VectorM2f(0, 1-factorC0C3);
+        VectorM2f uvBL1 = new VectorM2f(factorC0C1, 1-factorC0C3);
+        VectorM2f uvBL2 = new VectorM2f(factorC0C1, 1);
+        VectorM2f uvBL3 = new VectorM2f(0, 1);
 
-        VectorM2f uvTR0 = new VectorM2f(1-factorC0C1, 1-factorC0C3);
-        VectorM2f uvTR1 = new VectorM2f(1, 1-factorC0C3);
-        VectorM2f uvTR2 = new VectorM2f(1, 1);
-        VectorM2f uvTR3 = new VectorM2f(1-factorC0C1, 1);
+        VectorM2f uvBR0 = new VectorM2f(1-factorC0C1, 1-factorC0C3);
+        VectorM2f uvBR1 = new VectorM2f(1, 1-factorC0C3);
+        VectorM2f uvBR2 = new VectorM2f(1, 1);
+        VectorM2f uvBR3 = new VectorM2f(1-factorC0C1, 1);
         int tex = textureGallery.get(face.getTexture().getTexturePath(copiedModel.getTextures()::get));
         // ----- lighting -----
         LightData light = block.getLightData();
@@ -273,39 +304,39 @@ public class CopycatRenderer implements BlockRenderer {
         int blockLight = light.getBlockLight();
 
 
-        // Bottom-left quad
+        // Top right
         emitQuad(
-                new VHelper(c0,    uvBL0, ao0),
-                new VHelper(c0c1,  uvBL1, lerp(ao0, ao1, 0.5f)),
-                new VHelper(center,uvBL2, (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                new VHelper(c0c3,  uvBL3, lerp(ao0, ao3, 0.5f)),
+                new VHelper(c0,    uvTR1, ao0),
+                new VHelper(c0c1,  uvTR0, lerp(ao0, ao1, 0.5f)),
+                new VHelper(center,uvTR3, (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(c0c3,  uvTR2, lerp(ao0, ao3, 0.5f)),
                 tex, sunLight, blockLight
         );
 
-        // Bottom-right quad (now uses TOP-LEFT UVs)
+        // Top left
         emitQuad(
-                new VHelper(c0c1,  uvTL0, lerp(ao0, ao1, 0.5f)),
-                new VHelper(c1,    uvTL1, ao1),
-                new VHelper(c1c2,  uvTL2, lerp(ao1, ao2, 0.5f)),
-                new VHelper(center,uvTL3, (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(c0c1,  uvTL1, lerp(ao0, ao1, 0.5f)),
+                new VHelper(c1,    uvTL0, ao1),
+                new VHelper(c1c2,  uvTL3, lerp(ao1, ao2, 0.5f)),
+                new VHelper(center,uvTL2, (ao0 + ao1 + ao2 + ao3) * 0.25f),
                 tex, sunLight, blockLight
         );
 
-        // Top-right quad
+        // Bottom right
         emitQuad(
-                new VHelper(center,uvTR0, (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                new VHelper(c1c2,  uvTR1, lerp(ao1, ao2, 0.5f)),
-                new VHelper(c2,    uvTR2, ao2),
-                new VHelper(c2c3,  uvTR3, lerp(ao2, ao3, 0.5f)),
+                new VHelper(c0c3,uvBR1, (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(center,  uvBR0, lerp(ao1, ao2, 0.5f)),
+                new VHelper(c2c3,    uvBR3, ao2),
+                new VHelper(c3,  uvBR2, lerp(ao2, ao3, 0.5f)),
                 tex, sunLight, blockLight
         );
 
-        // Top-left quad
+        // Bottom left
         emitQuad(
-                new VHelper(c0c3,  uvBR0, lerp(ao0, ao3, 0.5f)),
-                new VHelper(center,uvBR1, (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                new VHelper(c2c3,  uvBR2, lerp(ao2, ao3, 0.5f)),
-                new VHelper(c3,    uvBR3, ao3),
+                new VHelper(center, uvBL1, lerp(ao0, ao3, 0.5f)),
+                new VHelper(c1c2, uvBL0, (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(c2, uvBL3, lerp(ao2, ao3, 0.5f)),
+                new VHelper(c2c3, uvBL2, ao3),
                 tex, sunLight, blockLight
         );
     }
@@ -442,15 +473,10 @@ public class CopycatRenderer implements BlockRenderer {
         tileModel.setAOs(f2, a.ao, c.ao, d.ao);
     }
 
+
     private static float lerp(float a, float b, float t) {
         return a + (b - a) * t;
     }
-
-    private ExtendedBlock getRotationRelativeBlock(Vector3i direction) {
-        return getRotationRelativeBlock(direction.getX(), direction.getY(), direction.getZ());
-    }
-
-    private final VectorM3f rotationRelativeBlockDirection = new VectorM3f(0, 0, 0);
 
     private ExtendedBlock getRotationRelativeBlock(int dx, int dy, int dz) {
         rotationRelativeBlockDirection.set(dx, dy, dz);
