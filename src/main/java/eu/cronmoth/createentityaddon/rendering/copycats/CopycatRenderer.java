@@ -341,7 +341,7 @@ public class CopycatRenderer implements BlockRenderer {
         if (axis==null && facing != null) {
             return face;
         }
-        else {
+        else if (axis != null) {
             switch (axis) {
                 case "x" -> {
                     if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
