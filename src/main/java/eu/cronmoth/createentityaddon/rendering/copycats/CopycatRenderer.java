@@ -216,8 +216,8 @@ public class CopycatRenderer implements BlockRenderer {
 
     private VectorM3f[] getFaceCorners(VectorM3f[] c, Direction dir) {
         return switch (dir) {
-            case DOWN -> new VectorM3f[]{c[0], c[3], c[2], c[1]};     // Boden: minY (von außen unten)
-            case UP -> new VectorM3f[]{c[5], c[6], c[7], c[4]};       // Decke: maxY (von außen oben)
+            case DOWN -> new VectorM3f[]{c[2], c[1], c[0], c[3]};     // Boden: minY (von außen unten) 0 3 2 1
+            case UP -> new VectorM3f[]{c[7], c[4], c[5], c[6]};       // Decke: maxY (von außen oben) 5 6 7 4
             case NORTH -> new VectorM3f[]{c[4], c[7], c[3], c[0]};    // Vorne: minZ (von außen, CW)
             case SOUTH -> new VectorM3f[]{c[6], c[5], c[1], c[2]};    // Hinten: maxZ (von außen, CW)
             case WEST -> new VectorM3f[]{c[5], c[4], c[0], c[1]};     // Links: minX (von außen, CW)
