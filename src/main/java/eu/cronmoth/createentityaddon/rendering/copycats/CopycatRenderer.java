@@ -1,6 +1,7 @@
 
 package eu.cronmoth.createentityaddon.rendering.copycats;
 
+import com.flowpowered.math.vector.Vector3d;
 import com.flowpowered.math.vector.Vector3f;
 import com.flowpowered.math.vector.Vector3i;
 
@@ -237,7 +238,8 @@ public class CopycatRenderer implements BlockRenderer {
         if (face == null) return;
 
         String axis = materialProperties!=null ? materialProperties.get("axis"):null;
-        String facing = materialProperties!=null ? materialProperties.get("facing"):null;
+        String facingStr = materialProperties!=null ? materialProperties.get("facing"):null;
+        Direction facing = facingStr!=null ? Direction.fromString(facingStr):null;
         Optional<Face> mapped = Arrays.stream(copiedModel.getElements())
                 .filter(Objects::nonNull)
                 .map(e -> e.getFaces().get(resolveTextureDirection(axis, facing, dir)))
@@ -265,6 +267,7 @@ public class CopycatRenderer implements BlockRenderer {
             ao2 = testAo(c2, dir);
             ao3 = testAo(c3, dir);
         }
+
         VectorM3f c0c1 = new VectorM3f((c0.x + c1.x)/2f, (c0.y + c1.y)/2f, (c0.z + c1.z)/2f);
         VectorM3f c0c3 = new VectorM3f((c0.x + c3.x)/2f, (c0.y + c3.y)/2f, (c0.z + c3.z)/2f);
         VectorM3f c1c2 = new VectorM3f((c1.x + c2.x)/2f, (c1.y + c2.y)/2f, (c1.z + c2.z)/2f);
@@ -274,70 +277,87 @@ public class CopycatRenderer implements BlockRenderer {
                 (c0.y + c1.y + c2.y + c3.y)/4f,
                 (c0.z + c1.z + c2.z + c3.z)/4f
         );
-        VectorM2f uvTL0 = new VectorM2f(0, 0);
-        VectorM2f uvTL1 = new VectorM2f(factorC0C1, 0);
-        VectorM2f uvTL2 = new VectorM2f(factorC0C1,factorC0C3);
-        VectorM2f uvTL3 = new VectorM2f(0, factorC0C3);
 
-        VectorM2f uvTR0 = new VectorM2f(1-factorC0C1, 0);
-        VectorM2f uvTR1 = new VectorM2f(1, 0);
-        VectorM2f uvTR2 = new VectorM2f(1, factorC0C3);
-        VectorM2f uvTR3 = new VectorM2f(1-factorC0C1, factorC0C3);
+        VectorM2f[] uvTL = new VectorM2f[]{
+                new VectorM2f(0, 0),
+                new VectorM2f(factorC0C1, 0),
+                new VectorM2f(factorC0C1, factorC0C3),
+                new VectorM2f(0, factorC0C3)};
 
-        VectorM2f uvBL0 = new VectorM2f(0, 1-factorC0C3);
-        VectorM2f uvBL1 = new VectorM2f(factorC0C1, 1-factorC0C3);
-        VectorM2f uvBL2 = new VectorM2f(factorC0C1, 1);
-        VectorM2f uvBL3 = new VectorM2f(0, 1);
+        VectorM2f[] uvTR = new VectorM2f[]{
+                new VectorM2f(1-factorC0C1, 0),
+                new VectorM2f(1, 0),
+                new VectorM2f(1, factorC0C3),
+                new VectorM2f(1-factorC0C1, factorC0C3)};
 
-        VectorM2f uvBR0 = new VectorM2f(1-factorC0C1, 1-factorC0C3);
-        VectorM2f uvBR1 = new VectorM2f(1, 1-factorC0C3);
-        VectorM2f uvBR2 = new VectorM2f(1, 1);
-        VectorM2f uvBR3 = new VectorM2f(1-factorC0C1, 1);
+        VectorM2f[] uvBL = new VectorM2f[]{
+                new VectorM2f(0, 1-factorC0C3),
+                new VectorM2f(factorC0C1, 1-factorC0C3),
+                new VectorM2f(factorC0C1, 1),
+                new VectorM2f(0, 1)};
+
+        VectorM2f[] uvBR = new VectorM2f[]{
+                new VectorM2f(1-factorC0C1, 1-factorC0C3),
+                new VectorM2f(1, 1-factorC0C3),
+                new VectorM2f(1, 1),
+                new VectorM2f(1-factorC0C1, 1)};
+
+        boolean invertUV = invertUV(facing, axis, dir);
+
+        if (invertUV) {
+            uvTL = swapUV(uvTL);
+            uvTR = swapUV(uvTR);
+            uvBL = swapUV(uvBL);
+            uvBR = swapUV(uvBR);
+        }
         int tex = textureGallery.get(face.getTexture().getTexturePath(copiedModel.getTextures()::get));
         // ----- lighting -----
         LightData light = block.getLightData();
         int sunLight = light.getSkyLight();
         int blockLight = light.getBlockLight();
 
-
         // Top right
+        VectorM3f[] vertexTR = new VectorM3f[]{c0, c0c1, center, c0c3};
         emitQuad(
-                new VHelper(c0,    uvTR1, ao0),
-                new VHelper(c0c1,  uvTR0, lerp(ao0, ao1, 0.5f)),
-                new VHelper(center,uvTR3, (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                new VHelper(c0c3,  uvTR2, lerp(ao0, ao3, 0.5f)),
+                new VHelper(vertexTR[0], uvTR[1], ao0),
+                new VHelper(vertexTR[1], uvTR[0], lerp(ao0, ao1, 0.5f)),
+                new VHelper(vertexTR[2], uvTR[3], (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(vertexTR[3], uvTR[2], lerp(ao0, ao3, 0.5f)),
                 tex, sunLight, blockLight
         );
 
         // Top left
+        VectorM3f[] vertexTL = new VectorM3f[]{c0c1, c1, c1c2, center};
         emitQuad(
-                new VHelper(c0c1,  uvTL1, lerp(ao0, ao1, 0.5f)),
-                new VHelper(c1,    uvTL0, ao1),
-                new VHelper(c1c2,  uvTL3, lerp(ao1, ao2, 0.5f)),
-                new VHelper(center,uvTL2, (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(vertexTL[0], uvTL[1], lerp(ao0, ao1, 0.5f)),
+                new VHelper(vertexTL[1], uvTL[0], ao1),
+                new VHelper(vertexTL[2], uvTL[3], lerp(ao1, ao2, 0.5f)),
+                new VHelper(vertexTL[3], uvTL[2], (ao0 + ao1 + ao2 + ao3) * 0.25f),
                 tex, sunLight, blockLight
         );
 
         // Bottom right
+        VectorM3f[] vertexBR = new VectorM3f[]{c0c3, center, c2c3, c3};
         emitQuad(
-                new VHelper(c0c3,uvBR1, (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                new VHelper(center,  uvBR0, lerp(ao1, ao2, 0.5f)),
-                new VHelper(c2c3,    uvBR3, ao2),
-                new VHelper(c3,  uvBR2, lerp(ao2, ao3, 0.5f)),
+                new VHelper(vertexBR[0], uvBR[1], (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(vertexBR[1], uvBR[0], lerp(ao1, ao2, 0.5f)),
+                new VHelper(vertexBR[2], uvBR[3], ao2),
+                new VHelper(vertexBR[3], uvBR[2], lerp(ao2, ao3, 0.5f)),
                 tex, sunLight, blockLight
         );
 
         // Bottom left
+        VectorM3f[] vertexBL = new VectorM3f[]{center, c1c2, c2, c2c3};
         emitQuad(
-                new VHelper(center, uvBL1, lerp(ao0, ao3, 0.5f)),
-                new VHelper(c1c2, uvBL0, (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                new VHelper(c2, uvBL3, lerp(ao2, ao3, 0.5f)),
-                new VHelper(c2c3, uvBL2, ao3),
+                new VHelper(vertexBL[0], uvBL[1], lerp(ao0, ao3, 0.5f)),
+                new VHelper(vertexBL[1], uvBL[0], (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(vertexBL[2], uvBL[3], lerp(ao2, ao3, 0.5f)),
+                new VHelper(vertexBL[3], uvBL[2], ao3),
                 tex, sunLight, blockLight
         );
     }
 
-    private Direction resolveTextureDirection(String axis, String facing, Direction face) {
+    private Direction resolveTextureDirection(String axis, Direction facing, Direction face) {
         if (axis==null && facing != null) {
             return face;
         }
@@ -369,8 +389,39 @@ public class CopycatRenderer implements BlockRenderer {
         return face;
     }
 
-    private int rotateUV (Direction facing, String axis, Direction face){
-        return 0;
+    private boolean invertUV (Direction facing, String axis, Direction face){
+
+        if (axis==null && facing != null) {
+            return false;
+        }
+        else if (axis != null) {
+            switch (axis) {
+                case "x" -> {
+                    if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
+                        return false;
+                    } else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
+                        return true;
+                    } else {
+                        return true;
+                    }
+                }
+                case "y" -> {
+                    return false;
+                }
+                case "z" -> {
+                    return false;
+                }
+            }
+        }
+        return false;
+    }
+
+    private VectorM2f[] swapUV(VectorM2f[] uvArray) {
+        VectorM2f[] swapped = new VectorM2f[uvArray.length];
+        for (int i = 0; i < uvArray.length; i++) {
+            swapped[i] = new VectorM2f(uvArray[i].y, uvArray[i].x);
+        }
+        return swapped;
     }
 
     private void emitQuad(
