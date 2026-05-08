@@ -1,7 +1,6 @@
-
 package eu.cronmoth.createentityaddon.rendering.copycats;
 
-import com.flowpowered.math.vector.Vector3d;
+import com.flowpowered.math.TrigMath;
 import com.flowpowered.math.vector.Vector3f;
 import com.flowpowered.math.vector.Vector3i;
 
@@ -82,6 +81,7 @@ public class CopycatRenderer implements BlockRenderer {
         if (name[1].equals("copycat_base")) {
             copiedModel = resourcePack.getModel(new ResourcePath<>(name[0] + ":block/copycat_base/block"));
         }
+        System.out.println("------------" + name[1]);
         if (copiedModel == null) return;
 
         int modelStart = blockModel.getStart();
@@ -302,15 +302,19 @@ public class CopycatRenderer implements BlockRenderer {
                 new VectorM2f(1, 1),
                 new VectorM2f(1-factorC0C1, 1)};
 
-        boolean invertUV = invertUV(facing, axis, dir);
+        int rotationSteps = Math.floorDiv(face.getRotation(), 90) % 4;
+        System.out.println("dir: " + dir.toString());
+        System.out.println(resolveTextureDirection(axis, facing, dir).toString());
+        System.out.println("rotationSteps: " + rotationSteps);
+        if (rotationSteps < 0) rotationSteps += 4;
+        rotationSteps = rotationSteps + rotationStepsByAxisAndFacing(facing, axis, dir);
+        rotateUVs(uvTL, rotationSteps);
+        rotateUVs(uvTR, rotationSteps);
+        rotateUVs(uvBL, rotationSteps);
+        rotateUVs(uvBR, rotationSteps);
 
-        if (invertUV) {
-            uvTL = swapUV(uvTL);
-            uvTR = swapUV(uvTR);
-            uvBL = swapUV(uvBL);
-            uvBR = swapUV(uvBR);
-        }
         int tex = textureGallery.get(face.getTexture().getTexturePath(copiedModel.getTextures()::get));
+
         // ----- lighting -----
         LightData light = block.getLightData();
         int sunLight = light.getSkyLight();
@@ -359,7 +363,56 @@ public class CopycatRenderer implements BlockRenderer {
 
     private Direction resolveTextureDirection(String axis, Direction facing, Direction face) {
         if (axis==null && facing != null) {
-            return face;
+            return switch(facing) {
+                case NORTH -> switch (face) {
+                    case NORTH -> Direction.NORTH;
+                    case EAST -> Direction.EAST;
+                    case SOUTH -> Direction.SOUTH;
+                    case WEST -> Direction.WEST;
+                    case UP -> Direction.UP;
+                    case DOWN -> Direction.DOWN;
+                };
+                case EAST -> switch (face) {
+                    case NORTH -> Direction.WEST;
+                    case EAST -> Direction.NORTH;
+                    case SOUTH -> Direction.EAST;
+                    case WEST -> Direction.SOUTH;
+                    case UP -> Direction.UP;
+                    case DOWN -> Direction.DOWN;
+                };
+                case SOUTH -> switch (face) {
+                    case NORTH -> Direction.SOUTH;
+                    case EAST -> Direction.WEST;
+                    case SOUTH -> Direction.NORTH;
+                    case WEST -> Direction.EAST;
+                    case UP -> Direction.UP;
+                    case DOWN -> Direction.DOWN;
+                };
+                case WEST -> switch (face) {
+                    case NORTH -> Direction.EAST;
+                    case EAST -> Direction.SOUTH;
+                    case SOUTH -> Direction.WEST;
+                    case WEST -> Direction.NORTH;
+                    case UP -> Direction.UP;
+                    case DOWN -> Direction.DOWN;
+                };
+                case UP -> switch (face) {
+                    case NORTH -> Direction.DOWN;
+                    case EAST -> Direction.EAST;
+                    case SOUTH -> Direction.UP;
+                    case WEST -> Direction.WEST;
+                    case UP -> Direction.NORTH;
+                    case DOWN -> Direction.SOUTH;
+                };
+                case DOWN -> switch (face) {
+                    case NORTH -> Direction.UP;
+                    case EAST -> Direction.EAST;
+                    case SOUTH -> Direction.DOWN;
+                    case WEST -> Direction.WEST;
+                    case UP -> Direction.SOUTH;
+                    case DOWN -> Direction.NORTH;
+                };
+            };
         }
         else if (axis != null) {
             switch (axis) {
@@ -389,31 +442,46 @@ public class CopycatRenderer implements BlockRenderer {
         return face;
     }
 
-    private boolean invertUV (Direction facing, String axis, Direction face){
+    private int rotationStepsByAxisAndFacing(Direction facing, String axis, Direction face){
 
         if (axis==null && facing != null) {
-            return false;
+            return calculateUVRotationForFace(facing);
         }
         else if (axis != null) {
             switch (axis) {
                 case "x" -> {
                     if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
-                        return false;
+                        return 0;
                     } else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
-                        return true;
+                        return 1;
                     } else {
-                        return true;
+                        return 1;
                     }
                 }
                 case "y" -> {
-                    return false;
+                    return 0;
                 }
                 case "z" -> {
-                    return false;
+                    return 0;
                 }
             }
         }
-        return false;
+        return 0;
+    }
+
+    private void rotateUVs (VectorM2f[] uvArray, int rotationSteps) {
+        for (VectorM2f uv : uvArray) {
+            rotateUV(uv, rotationSteps);
+        }
+    }
+
+    private void rotateUV (VectorM2f uv, int rotationSteps) {
+        for (int i = 0; i < rotationSteps; i++) {
+            float cx = TrigMath.cos(Math.PI/2), cy = TrigMath.sin(Math.PI/2);
+            uv.translate(-0.5f, -0.5f);
+            uv.rotate(cx, cy);
+            uv.translate(0.5f, 0.5f);
+        }
     }
 
     private VectorM2f[] swapUV(VectorM2f[] uvArray) {
@@ -499,5 +567,16 @@ public class CopycatRenderer implements BlockRenderer {
 
         if (occluding > 3) occluding = 3;
         return Math.max(0f, Math.min(1f - occluding * 0.25f, 1f));
+    }
+
+    private int calculateUVRotationForFace(Direction face) {
+        return switch(face) {
+            case NORTH -> 0;
+            case EAST -> 0;
+            case SOUTH -> 0;
+            case WEST -> 0;
+            case UP -> 0;
+            case DOWN -> 0;
+        };
     }
 }
