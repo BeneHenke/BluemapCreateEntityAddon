@@ -8,5 +8,6 @@ Tracks:
 
 Together with the API:
 <img width="2559" height="1270" alt="train_comp" src="https://github.com/user-attachments/assets/683094cb-5093-4e8f-871d-1c51e30c8d41" />
+<img width="2550" height="1260" alt="train_lines" src="https://github.com/user-attachments/assets/42f8f3c6-a21e-4405-b947-7ae6720e6e50" />
 
 Copycats still have issues.
