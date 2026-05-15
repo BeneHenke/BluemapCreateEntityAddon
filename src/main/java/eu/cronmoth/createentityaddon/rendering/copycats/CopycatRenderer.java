@@ -306,12 +306,14 @@ public class CopycatRenderer implements BlockRenderer {
         System.out.println("dir: " + dir.toString());
         System.out.println(resolveTextureDirection(axis, facing, dir).toString());
         System.out.println("rotationSteps: " + rotationSteps);
+        System.out.println(face.getUv());
         if (rotationSteps < 0) rotationSteps += 4;
         rotationSteps = rotationSteps + rotationStepsByAxisAndFacing(facing, axis, dir);
         rotateUVs(uvTL, rotationSteps);
         rotateUVs(uvTR, rotationSteps);
         rotateUVs(uvBL, rotationSteps);
         rotateUVs(uvBR, rotationSteps);
+        System.out.println(uvTL[0]);
 
         int tex = textureGallery.get(face.getTexture().getTexturePath(copiedModel.getTextures()::get));
 
@@ -445,7 +447,7 @@ public class CopycatRenderer implements BlockRenderer {
     private int rotationStepsByAxisAndFacing(Direction facing, String axis, Direction face){
 
         if (axis==null && facing != null) {
-            return calculateUVRotationForFace(facing);
+            return calculateUVRotationForFace(facing, face);
         }
         else if (axis != null) {
             switch (axis) {
@@ -569,12 +571,32 @@ public class CopycatRenderer implements BlockRenderer {
         return Math.max(0f, Math.min(1f - occluding * 0.25f, 1f));
     }
 
-    private int calculateUVRotationForFace(Direction face) {
-        return switch(face) {
-            case NORTH -> 0;
-            case EAST -> 0;
-            case SOUTH -> 0;
-            case WEST -> 0;
+    private int calculateUVRotationForFace(Direction facing, Direction face) {
+        return switch(facing) {
+            case NORTH -> {
+                yield 0;
+            }
+            case EAST -> {
+                if (face.equals(Direction.UP) || face.equals(Direction.DOWN)) {
+                    yield 1;
+                } else {
+                    yield 0;
+                }
+            }
+            case SOUTH -> {
+                if (face.equals(Direction.UP) || face.equals(Direction.DOWN)) {
+                    yield 2;
+                } else {
+                    yield 0;
+                }
+            }
+            case WEST -> {
+                if (face.equals(Direction.UP) || face.equals(Direction.DOWN)) {
+                    yield 3;
+                } else {
+                    yield 0;
+                }
+            }
             case UP -> 0;
             case DOWN -> 0;
         };

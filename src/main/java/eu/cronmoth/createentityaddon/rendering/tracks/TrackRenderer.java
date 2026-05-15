@@ -61,9 +61,13 @@ public class TrackRenderer implements BlockRenderer {
         boolean isZModel = modelPath.contains("z_ortho");
 
         //reset variant orientation to combine models
+        System.out.println(modelPath);
         variant.getTransformMatrix().identity();
         if (!(isXModel || isZModel)) {
-            variant.getModel().setResource(resourcePack.getModel(new ResourcePath<>("create:block/track/x_ortho")));
+            int lastSlash = modelPath.lastIndexOf('/');
+            String path = (lastSlash != -1) ? modelPath.substring(0, lastSlash) : modelPath;
+            System.out.println("path: " + path + "/x_ortho");
+            variant.getModel().setResource(resourcePack.getModel(new ResourcePath<>( path + "/x_ortho")));
             modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
             blockModel.translate(0.5f, 0, 0);
             isXModel = true;
@@ -72,7 +76,7 @@ public class TrackRenderer implements BlockRenderer {
         modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
         blockModel.initialize(modelStart);
 
-        if (modelPath.equals("create:block/track/diag")) {
+        if (modelPath.endsWith("diag")) {
             MatrixM4f matrix = new MatrixM4f();
             matrix
                     .identity()
@@ -81,7 +85,7 @@ public class TrackRenderer implements BlockRenderer {
                     .rotate(0, -45f, 0)
                     .translate(0.5f, 0.5f, 0.5f);
             blockModel.transform(matrix);
-        } else if (modelPath.equals("create:block/track/diag_2")) {
+        } else if (modelPath.endsWith("diag_2")) {
             MatrixM4f matrix = new MatrixM4f();
             matrix
                     .identity()
@@ -90,7 +94,7 @@ public class TrackRenderer implements BlockRenderer {
                     .rotate(0, 45f, 0)
                     .translate(0.5f, 0.5f, 0.5f);
             blockModel.transform(matrix);
-        } else if (modelPath.equals("create:block/track/ascending")) {
+        } else if (modelPath.endsWith("ascending")) {
             MatrixM4f matrix = new MatrixM4f();
             matrix.identity()
                     .translate(-0.25f, 0, 0)
@@ -149,7 +153,7 @@ public class TrackRenderer implements BlockRenderer {
 
                 if (isXModel) {
                     // X-axis aligned (East/West) - rotate in opposite direction
-                    if (!(modelPath.equals("create:block/track/ascending") && axis0.getY()>0)) {
+                    if (!(modelPath.endsWith("ascending") && axis0.getY()>0)) {
                         pitchDiff = -pitchDiff;
                         rollDiff = -rollDiff;
                     }
@@ -164,7 +168,7 @@ public class TrackRenderer implements BlockRenderer {
                     }
                 }
 
-                if (modelPath.equals("create:block/track/diag")) {
+                if (modelPath.endsWith("diag")) {
                     MatrixM4f matrix = new MatrixM4f();
                     matrix
                             .identity()
@@ -173,7 +177,7 @@ public class TrackRenderer implements BlockRenderer {
                             .rotate(0, -45f, 0)
                             .translate(0.5f, 0.5f, 0.5f);
                     blockModel.transform(matrix);
-                } else if (modelPath.equals("create:block/track/diag_2")) {
+                } else if (modelPath.endsWith("diag_2")) {
                     MatrixM4f matrix = new MatrixM4f();
                     matrix.identity()
                             .translate(-0.5f, -0.5f, -0.5f)
@@ -182,7 +186,7 @@ public class TrackRenderer implements BlockRenderer {
                             .translate(0.5f, 0.5f, 0.5f);
                     blockModel.transform(matrix);
                 }
-                else if (modelPath.equals("create:block/track/ascending")) {
+                else if (modelPath.endsWith("ascending")) {
                     MatrixM4f matrix = new MatrixM4f();
                     matrix.identity()
                             .translate(-0.5f, -0.5f, -0.5f)
