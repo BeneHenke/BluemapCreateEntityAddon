@@ -169,19 +169,15 @@
       "model": "create:block/track/diag_2"
     },
     "shape=none,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "minecraft:block/air"
     },
     "shape=none,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "minecraft:block/air"
     },
     "shape=none,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "minecraft:block/air"
     },
     "shape=none,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "minecraft:block/air"
     },
     "shape=pd,turn=false,waterlogged=false": {
