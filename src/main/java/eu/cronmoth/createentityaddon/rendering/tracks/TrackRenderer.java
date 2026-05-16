@@ -65,7 +65,7 @@ public class TrackRenderer implements BlockRenderer {
         if (!(isXModel || isZModel)) {
             int lastSlash = modelPath.lastIndexOf('/');
             String path = (lastSlash != -1) ? modelPath.substring(0, lastSlash) : modelPath;
-            variant.getModel().setResource(resourcePack.getModel(new ResourcePath<>( path + "/x_ortho")));
+            variant.getModel().setResource(resourcePack.getModels().get(new ResourcePath<>( path + "/x_ortho")));
             modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
             blockModel.translate(0.5f, 0, 0);
             isXModel = true;
@@ -171,16 +171,16 @@ public class TrackRenderer implements BlockRenderer {
                     matrix
                             .identity()
                             .translate(-0.5f, -0.5f, -0.5f)
-                            .rotate(pitchDiff,0,rollDiff)
-                            .rotate(0, -45f, 0)
+                            .rotateXYZ(pitchDiff,0,rollDiff)
+                            .rotateYXZ(0, -45f, 0)
                             .translate(0.5f, 0.5f, 0.5f);
                     blockModel.transform(matrix);
                 } else if (modelPath.endsWith("diag_2")) {
                     MatrixM4f matrix = new MatrixM4f();
                     matrix.identity()
                             .translate(-0.5f, -0.5f, -0.5f)
-                            .rotate(pitchDiff,0,rollDiff)
-                            .rotate(0, 45f, 0)
+                            .rotateXYZ(pitchDiff,0,rollDiff)
+                            .rotateXYZ(0, 45f, 0)
                             .translate(0.5f, 0.5f, 0.5f);
                     blockModel.transform(matrix);
                 }
@@ -188,8 +188,8 @@ public class TrackRenderer implements BlockRenderer {
                     MatrixM4f matrix = new MatrixM4f();
                     matrix.identity()
                             .translate(-0.5f, -0.5f, -0.5f)
-                            .rotate(pitchDiff,0,rollDiff)
-                            .rotate(0, 90, -45)
+                            .rotateXYZ(pitchDiff,0,rollDiff)
+                            .rotateXYZ(0, 90, -45)
                             .translate(0.5f, 1f, 0.5f);
                     blockModel.transform(matrix);
                     blockModel.transform(modelMatrix);
@@ -198,7 +198,7 @@ public class TrackRenderer implements BlockRenderer {
                     MatrixM4f matrix = new MatrixM4f();
                     matrix.identity()
                             .translate(-0.5f, -0.5f, -0.5f)
-                            .rotate(pitchDiff,0,rollDiff)
+                            .rotateXYZ(pitchDiff,0,rollDiff)
                             .translate(0.5f, 0.5f, 0.5f);
                     blockModel.transform(matrix);
                 }
@@ -206,7 +206,7 @@ public class TrackRenderer implements BlockRenderer {
                 MatrixM4f matrix = new MatrixM4f();
                 matrix.identity()
                         .translate(-0.5f, -0.5f, -0.5f)
-                        .rotate(0, yawDiff, 0)
+                        .rotateXYZ(0, yawDiff, 0)
                         .translate(0.5f, 0.5f, 0.5f)
                         .translate((float) segment.getX(), (float) segment.getY() + ((i % 4) / 1000f), (float) segment.getZ());
                 blockModel.transform(matrix);
