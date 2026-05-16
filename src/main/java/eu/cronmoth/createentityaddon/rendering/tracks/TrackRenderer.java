@@ -65,7 +65,7 @@ public class TrackRenderer implements BlockRenderer {
         if (!(isXModel || isZModel)) {
             int lastSlash = modelPath.lastIndexOf('/');
             String path = (lastSlash != -1) ? modelPath.substring(0, lastSlash) : modelPath;
-            variant.getModel().setResource(resourcePack.getModel(new ResourcePath<>( path + "/x_ortho")));
+            variant.getModel().setResource(resourcePack.getModels().get(new ResourcePath<>( path + "/x_ortho")));
             modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
             blockModel.translate(0.5f, 0, 0);
             isXModel = true;

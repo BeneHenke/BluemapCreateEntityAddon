@@ -59,7 +59,8 @@ public class ConnectionBlock implements BlockAccess {
     public LightData getLightData() {
         //return lightData;
 //        block.set(xOrigin, yOrigin, zOrigin);
-        return block.getLightData();
+        //return block.getLightData();
+        return new LightData(15, 0);
     }
 
     @Override
