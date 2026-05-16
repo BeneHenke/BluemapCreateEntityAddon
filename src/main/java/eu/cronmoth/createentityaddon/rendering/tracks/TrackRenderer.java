@@ -61,12 +61,10 @@ public class TrackRenderer implements BlockRenderer {
         boolean isZModel = modelPath.contains("z_ortho");
 
         //reset variant orientation to combine models
-        System.out.println(modelPath);
         variant.getTransformMatrix().identity();
         if (!(isXModel || isZModel)) {
             int lastSlash = modelPath.lastIndexOf('/');
             String path = (lastSlash != -1) ? modelPath.substring(0, lastSlash) : modelPath;
-            System.out.println("path: " + path + "/x_ortho");
             variant.getModel().setResource(resourcePack.getModel(new ResourcePath<>( path + "/x_ortho")));
             modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
             blockModel.translate(0.5f, 0, 0);

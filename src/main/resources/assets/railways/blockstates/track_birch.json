@@ -1,95 +1,91 @@
 {
   "variants": {
     "shape=ae,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/ascending",
-      "y": 270
+      "y": 270,
+      "renderer": "create:track"
     },
     "shape=ae,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/ascending",
-      "y": 270
+      "y": 270,
+      "renderer": "create:track"
     },
     "shape=ae,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/ascending",
-      "y": 270
+      "y": 270,
+      "renderer": "create:track"
     },
     "shape=ae,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/ascending",
-      "y": 270
+      "y": 270,
+      "renderer": "create:track"
     },
     "shape=an,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/ascending",
-      "y": 180
+      "y": 180,
+      "renderer": "create:track"
     },
     "shape=an,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/ascending",
-      "y": 180
+      "y": 180,
+      "renderer": "create:track"
     },
     "shape=an,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/ascending",
-      "y": 180
+      "y": 180,
+      "renderer": "create:track"
     },
     "shape=an,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/ascending",
-      "y": 180
+      "y": 180,
+      "renderer": "create:track"
     },
     "shape=as,turn=false,waterlogged=false": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/ascending"
+      "model": "railways:block/track/birch/ascending",
+      "renderer": "create:track"
     },
     "shape=as,turn=false,waterlogged=true": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/ascending"
+      "model": "railways:block/track/birch/ascending",
+      "renderer": "create:track"
     },
     "shape=as,turn=true,waterlogged=false": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/ascending"
+      "model": "railways:block/track/birch/ascending",
+      "renderer": "create:track"
     },
     "shape=as,turn=true,waterlogged=true": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/ascending"
+      "model": "railways:block/track/birch/ascending",
+      "renderer": "create:track"
     },
     "shape=aw,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/ascending",
-      "y": 90
+      "y": 90,
+      "renderer": "create:track"
     },
     "shape=aw,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/ascending",
-      "y": 90
+      "y": 90,
+      "renderer": "create:track"
     },
     "shape=aw,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/ascending",
-      "y": 90
+      "y": 90,
+      "renderer": "create:track"
     },
     "shape=aw,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/ascending",
-      "y": 90
+      "y": 90,
+      "renderer": "create:track"
     },
     "shape=cr_d,turn=false,waterlogged=false": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/cross_diag"
     },
     "shape=cr_d,turn=false,waterlogged=true": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/cross_diag"
     },
     "shape=cr_d,turn=true,waterlogged=false": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/cross_diag"
     },
     "shape=cr_d,turn=true,waterlogged=true": {
-      "renderer": "create:track",
       "model": "railways:block/track/birch/cross_diag"
     },
     "shape=cr_ndx,turn=false,waterlogged=false": {
@@ -153,20 +149,20 @@
       "model": "railways:block/track/birch/cross_d1_zo"
     },
     "shape=nd,turn=false,waterlogged=false": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/diag_2"
+      "model": "railways:block/track/birch/diag_2",
+      "renderer": "create:track"
     },
     "shape=nd,turn=false,waterlogged=true": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/diag_2"
+      "model": "railways:block/track/birch/diag_2",
+      "renderer": "create:track"
     },
     "shape=nd,turn=true,waterlogged=false": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/diag_2"
+      "model": "railways:block/track/birch/diag_2",
+      "renderer": "create:track"
     },
     "shape=nd,turn=true,waterlogged=true": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/diag_2"
+      "model": "railways:block/track/birch/diag_2",
+      "renderer": "create:track"
     },
     "shape=none,turn=false,waterlogged=false": {
       "model": "minecraft:block/air"
@@ -181,20 +177,20 @@
       "model": "minecraft:block/air"
     },
     "shape=pd,turn=false,waterlogged=false": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/diag"
+      "model": "railways:block/track/birch/diag",
+      "renderer": "create:track"
     },
     "shape=pd,turn=false,waterlogged=true": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/diag"
+      "model": "railways:block/track/birch/diag",
+      "renderer": "create:track"
     },
     "shape=pd,turn=true,waterlogged=false": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/diag"
+      "model": "railways:block/track/birch/diag",
+      "renderer": "create:track"
     },
     "shape=pd,turn=true,waterlogged=true": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/diag"
+      "model": "railways:block/track/birch/diag",
+      "renderer": "create:track"
     },
     "shape=te,turn=false,waterlogged=false": {
       "model": "railways:block/track/birch/teleport",
@@ -257,35 +253,36 @@
       "y": 90
     },
     "shape=xo,turn=false,waterlogged=false": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/x_ortho"
+      "model": "railways:block/track/birch/x_ortho",
+      "renderer": "create:track"
     },
     "shape=xo,turn=false,waterlogged=true": {
-      "model": "railways:block/track/birch/x_ortho"
+      "model": "railways:block/track/birch/x_ortho",
+      "renderer": "create:track"
     },
     "shape=xo,turn=true,waterlogged=false": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/x_ortho"
+      "model": "railways:block/track/birch/x_ortho",
+      "renderer": "create:track"
     },
     "shape=xo,turn=true,waterlogged=true": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/x_ortho"
+      "model": "railways:block/track/birch/x_ortho",
+      "renderer": "create:track"
     },
     "shape=zo,turn=false,waterlogged=false": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/z_ortho"
+      "model": "railways:block/track/birch/z_ortho",
+      "renderer": "create:track"
     },
     "shape=zo,turn=false,waterlogged=true": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/z_ortho"
+      "model": "railways:block/track/birch/z_ortho",
+      "renderer": "create:track"
     },
     "shape=zo,turn=true,waterlogged=false": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/z_ortho"
+      "model": "railways:block/track/birch/z_ortho",
+      "renderer": "create:track"
     },
     "shape=zo,turn=true,waterlogged=true": {
-      "renderer": "create:track",
-      "model": "railways:block/track/birch/z_ortho"
+      "model": "railways:block/track/birch/z_ortho",
+      "renderer": "create:track"
     }
   }
 }
