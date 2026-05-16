@@ -83,7 +83,7 @@ public class CopycatRenderer implements BlockRenderer {
         if (name[1].equals("copycat_base")) {
             copiedModel = resourcePack.getModels().get(new ResourcePath<>(name[0] + ":block/copycat_base/block"));
         }
-        System.out.println("------------" + name[1]);
+        //System.out.println("------------" + name[1]);
         if (copiedModel == null) return;
 
         int modelStart = blockModel.getStart();
@@ -305,17 +305,17 @@ public class CopycatRenderer implements BlockRenderer {
                 new VectorM2f(1-factorC0C1, 1)};
 
         int rotationSteps = Math.floorDiv(face.getRotation(), 90) % 4;
-        System.out.println("dir: " + dir.toString());
-        System.out.println(resolveTextureDirection(axis, facing, dir).toString());
-        System.out.println("rotationSteps: " + rotationSteps);
-        System.out.println(face.getUv());
+//        System.out.println("dir: " + dir.toString());
+//        System.out.println(resolveTextureDirection(axis, facing, dir).toString());
+//        System.out.println("rotationSteps: " + rotationSteps);
+//        System.out.println(face.getUv());
         if (rotationSteps < 0) rotationSteps += 4;
         rotationSteps = rotationSteps + rotationStepsByAxisAndFacing(facing, axis, dir);
         rotateUVs(uvTL, rotationSteps);
         rotateUVs(uvTR, rotationSteps);
         rotateUVs(uvBL, rotationSteps);
         rotateUVs(uvBR, rotationSteps);
-        System.out.println(uvTL[0]);
+//        System.out.println(uvTL[0]);
 
         int tex = textureGallery.get(face.getTexture().getTexturePath(copiedModel.getTextures()::get));
 
