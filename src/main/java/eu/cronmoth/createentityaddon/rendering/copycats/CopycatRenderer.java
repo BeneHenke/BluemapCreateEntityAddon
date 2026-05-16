@@ -1,6 +1,6 @@
-
 package eu.cronmoth.createentityaddon.rendering.copycats;
 
+import com.flowpowered.math.TrigMath;
 import com.flowpowered.math.vector.Vector3f;
 import com.flowpowered.math.vector.Vector3i;
 
@@ -10,7 +10,6 @@ import de.bluecolored.bluemap.core.map.hires.TileModel;
 import de.bluecolored.bluemap.core.map.hires.TileModelView;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
-import de.bluecolored.bluemap.core.resources.BlockColorCalculatorFactory;
 import de.bluecolored.bluemap.core.resources.ResourcePath;
 import de.bluecolored.bluemap.core.resources.pack.ResourcePool;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
@@ -51,6 +50,7 @@ public class CopycatRenderer implements BlockRenderer {
     private Variant variant;
     private Model modelResource;
     private TileModelView blockModel;
+    private final VectorM3f rotationRelativeBlockDirection = new VectorM3f(0, 0, 0);
 
     private final MatrixM4f elementTransform = new MatrixM4f();
 
@@ -83,6 +83,7 @@ public class CopycatRenderer implements BlockRenderer {
         if (name[1].equals("copycat_base")) {
             copiedModel = resourcePack.getModels().get(new ResourcePath<>(name[0] + ":block/copycat_base/block"));
         }
+        System.out.println("------------" + name[1]);
         if (copiedModel == null) return;
 
         int modelStart = blockModel.getStart();
@@ -116,27 +117,28 @@ public class CopycatRenderer implements BlockRenderer {
         float maxY = Math.max(from.getY(), to.getY());
         float maxZ = Math.max(from.getZ(), to.getZ());
 
-        // Compute cube corners
-        VectorM3f[] c = corners;
-        c[0].set(minX, minY, minZ);
-        c[1].set(minX, minY, maxZ);
-        c[2].set(maxX, minY, minZ);
-        c[3].set(maxX, minY, maxZ);
-        c[4].set(minX, maxY, minZ);
-        c[5].set(minX, maxY, maxZ);
-        c[6].set(maxX, maxY, minZ);
-        c[7].set(maxX, maxY, maxZ);
+        // Compute cube corners (ursprüngliche Position vor Transformation)
+        corners[0].set(minX, minY, minZ);
+        corners[1].set(minX, minY, maxZ);
+        corners[2].set(maxX, minY, minZ);
+        corners[3].set(maxX, minY, maxZ);
+        corners[4].set(minX, maxY, minZ);
+        corners[5].set(minX, maxY, maxZ);
+        corners[6].set(maxX, maxY, minZ);
+        corners[7].set(maxX, maxY, maxZ);
 
-        // Build transform matrix before faces
+        // Build transform matrix
         MatrixM4f transform = buildElementTransform(element, isStep, half, facing);
 
         // Apply rotation/translation to corners
-        for (int i = 0; i < 8; i++) transformCorner(c[i], transform);
+        for (int i = 0; i < 8; i++) transformCorner(corners[i], transform);
+
+        sortCornersByPosition(corners);
 
         int start = model.getStart();
         for (Direction dir : Direction.values()) {
-            VectorM3f[] faceCorners = getFaceCorners(c, dir);
-            face(element, dir, faceCorners[0], faceCorners[1], faceCorners[2], faceCorners[3], copiedModel, materialProperties, facing, isStep);
+            VectorM3f[] faceCorners = getFaceCorners(corners, dir);
+            face(element, dir, faceCorners[0], faceCorners[1], faceCorners[2], faceCorners[3], copiedModel, materialProperties);
         }
 
         model.initialize(start);
@@ -190,14 +192,38 @@ public class CopycatRenderer implements BlockRenderer {
         v.set(newX, newY, newZ);
     }
 
+    private void sortCornersByPosition(VectorM3f[] c) {
+        float minX = Float.MAX_VALUE, maxX = Float.MIN_VALUE;
+        float minY = Float.MAX_VALUE, maxY = Float.MIN_VALUE;
+        float minZ = Float.MAX_VALUE, maxZ = Float.MIN_VALUE;
+
+        for (VectorM3f corner : c) {
+            minX = Math.min(minX, corner.x);
+            maxX = Math.max(maxX, corner.x);
+            minY = Math.min(minY, corner.y);
+            maxY = Math.max(maxY, corner.y);
+            minZ = Math.min(minZ, corner.z);
+            maxZ = Math.max(maxZ, corner.z);
+        }
+
+        c[0].set(minX, minY, minZ);
+        c[1].set(minX, minY, maxZ);
+        c[2].set(maxX, minY, maxZ);
+        c[3].set(maxX, minY, minZ);
+        c[4].set(minX, maxY, minZ);
+        c[5].set(minX, maxY, maxZ);
+        c[6].set(maxX, maxY, maxZ);
+        c[7].set(maxX, maxY, minZ);
+    }
+
     private VectorM3f[] getFaceCorners(VectorM3f[] c, Direction dir) {
         return switch (dir) {
-            case DOWN -> new VectorM3f[]{c[0], c[2], c[3], c[1]};
-            case UP -> new VectorM3f[]{c[5], c[7], c[6], c[4]};
-            case NORTH -> new VectorM3f[]{c[2], c[0], c[4], c[6]};
-            case SOUTH -> new VectorM3f[]{c[1], c[3], c[7], c[5]};
-            case WEST -> new VectorM3f[]{c[0], c[1], c[5], c[4]};
-            case EAST -> new VectorM3f[]{c[3], c[2], c[6], c[7]};
+            case DOWN -> new VectorM3f[]{c[2], c[1], c[0], c[3]};     // Boden: minY (von außen unten) 0 3 2 1
+            case UP -> new VectorM3f[]{c[7], c[4], c[5], c[6]};       // Decke: maxY (von außen oben) 5 6 7 4
+            case NORTH -> new VectorM3f[]{c[4], c[7], c[3], c[0]};    // Vorne: minZ (von außen, CW)
+            case SOUTH -> new VectorM3f[]{c[6], c[5], c[1], c[2]};    // Hinten: maxZ (von außen, CW)
+            case WEST -> new VectorM3f[]{c[5], c[4], c[0], c[1]};     // Links: minX (von außen, CW)
+            case EAST -> new VectorM3f[]{c[7], c[6], c[2], c[3]};     // Rechts: maxX (von außen, CW)
         };
     }
 
@@ -209,18 +235,21 @@ public class CopycatRenderer implements BlockRenderer {
             VectorM3f c2,
             VectorM3f c3,
             Model copiedModel,
-            Map<String, String> materialProperties,
-            Direction blockFacing, boolean isStep) {
+            Map<String, String> materialProperties) {
         Face face = element.getFaces().get(dir);
         if (face == null) return;
 
         String axis = materialProperties!=null ? materialProperties.get("axis"):null;
+        String facingStr = materialProperties!=null ? materialProperties.get("facing"):null;
+        Direction facing = facingStr!=null ? Direction.fromString(facingStr):null;
         Optional<Face> mapped = Arrays.stream(copiedModel.getElements())
                 .filter(Objects::nonNull)
-                .map(e -> e.getFaces().get((isStep)?orientStep(blockFacing,axis, dir):orientPanel(blockFacing, axis, dir)))
+                .map(e -> e.getFaces().get(resolveTextureDirection(axis, facing, dir)))
+                //.map(e -> e.getFaces().get(dir))
                 .filter(Objects::nonNull)
                 .findFirst();
         if (mapped.isPresent()) face = mapped.get();
+
         // Vector from c0 to c1
         VectorM3f vecC0C1 = new VectorM3f(c1.x - c0.x, c1.y - c0.y, c1.z - c0.z);
         float lengthC0C1 = Math.round(vecC0C1.length()*100)/100f;
@@ -240,6 +269,7 @@ public class CopycatRenderer implements BlockRenderer {
             ao2 = testAo(c2, dir);
             ao3 = testAo(c3, dir);
         }
+
         VectorM3f c0c1 = new VectorM3f((c0.x + c1.x)/2f, (c0.y + c1.y)/2f, (c0.z + c1.z)/2f);
         VectorM3f c0c3 = new VectorM3f((c0.x + c3.x)/2f, (c0.y + c3.y)/2f, (c0.z + c3.z)/2f);
         VectorM3f c1c2 = new VectorM3f((c1.x + c2.x)/2f, (c1.y + c2.y)/2f, (c1.z + c2.z)/2f);
@@ -249,166 +279,221 @@ public class CopycatRenderer implements BlockRenderer {
                 (c0.y + c1.y + c2.y + c3.y)/4f,
                 (c0.z + c1.z + c2.z + c3.z)/4f
         );
-        VectorM2f uvBL0 = new VectorM2f(0, 0);
-        VectorM2f uvBL1 = new VectorM2f(factorC0C1, 0);
-        VectorM2f uvBL2 = new VectorM2f(factorC0C1,factorC0C3);
-        VectorM2f uvBL3 = new VectorM2f(0, factorC0C3);
 
-        VectorM2f uvBR0 = new VectorM2f(0, 1-factorC0C3);
-        VectorM2f uvBR1 = new VectorM2f(factorC0C1, 1-factorC0C3);
-        VectorM2f uvBR2 = new VectorM2f(factorC0C1, 1);
-        VectorM2f uvBR3 = new VectorM2f(0, 1);
+        VectorM2f[] uvTL = new VectorM2f[]{
+                new VectorM2f(0, 0),
+                new VectorM2f(factorC0C1, 0),
+                new VectorM2f(factorC0C1, factorC0C3),
+                new VectorM2f(0, factorC0C3)};
 
-        VectorM2f uvTL0 = new VectorM2f(1-factorC0C1, 0);
-        VectorM2f uvTL1 = new VectorM2f(1, 0);
-        VectorM2f uvTL2 = new VectorM2f(1, factorC0C3);
-        VectorM2f uvTL3 = new VectorM2f(1-factorC0C1, factorC0C3);
+        VectorM2f[] uvTR = new VectorM2f[]{
+                new VectorM2f(1-factorC0C1, 0),
+                new VectorM2f(1, 0),
+                new VectorM2f(1, factorC0C3),
+                new VectorM2f(1-factorC0C1, factorC0C3)};
 
-        VectorM2f uvTR0 = new VectorM2f(1-factorC0C1, 1-factorC0C3);
-        VectorM2f uvTR1 = new VectorM2f(1, 1-factorC0C3);
-        VectorM2f uvTR2 = new VectorM2f(1, 1);
-        VectorM2f uvTR3 = new VectorM2f(1-factorC0C1, 1);
+        VectorM2f[] uvBL = new VectorM2f[]{
+                new VectorM2f(0, 1-factorC0C3),
+                new VectorM2f(factorC0C1, 1-factorC0C3),
+                new VectorM2f(factorC0C1, 1),
+                new VectorM2f(0, 1)};
+
+        VectorM2f[] uvBR = new VectorM2f[]{
+                new VectorM2f(1-factorC0C1, 1-factorC0C3),
+                new VectorM2f(1, 1-factorC0C3),
+                new VectorM2f(1, 1),
+                new VectorM2f(1-factorC0C1, 1)};
+
+        int rotationSteps = Math.floorDiv(face.getRotation(), 90) % 4;
+        System.out.println("dir: " + dir.toString());
+        System.out.println(resolveTextureDirection(axis, facing, dir).toString());
+        System.out.println("rotationSteps: " + rotationSteps);
+        System.out.println(face.getUv());
+        if (rotationSteps < 0) rotationSteps += 4;
+        rotationSteps = rotationSteps + rotationStepsByAxisAndFacing(facing, axis, dir);
+        rotateUVs(uvTL, rotationSteps);
+        rotateUVs(uvTR, rotationSteps);
+        rotateUVs(uvBL, rotationSteps);
+        rotateUVs(uvBR, rotationSteps);
+        System.out.println(uvTL[0]);
+
         int tex = textureGallery.get(face.getTexture().getTexturePath(copiedModel.getTextures()::get));
+
         // ----- lighting -----
         LightData light = block.getLightData();
         int sunLight = light.getSkyLight();
         int blockLight = light.getBlockLight();
 
-
-        // Bottom-left quad
+        // Top right
+        VectorM3f[] vertexTR = new VectorM3f[]{c0, c0c1, center, c0c3};
         emitQuad(
-                new VHelper(c0,    uvBL0, ao0),
-                new VHelper(c0c1,  uvBL1, lerp(ao0, ao1, 0.5f)),
-                new VHelper(center,uvBL2, (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                new VHelper(c0c3,  uvBL3, lerp(ao0, ao3, 0.5f)),
+                new VHelper(vertexTR[0], uvTR[1], ao0),
+                new VHelper(vertexTR[1], uvTR[0], lerp(ao0, ao1, 0.5f)),
+                new VHelper(vertexTR[2], uvTR[3], (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(vertexTR[3], uvTR[2], lerp(ao0, ao3, 0.5f)),
                 tex, sunLight, blockLight
         );
 
-        // Bottom-right quad (now uses TOP-LEFT UVs)
+        // Top left
+        VectorM3f[] vertexTL = new VectorM3f[]{c0c1, c1, c1c2, center};
         emitQuad(
-                new VHelper(c0c1,  uvTL0, lerp(ao0, ao1, 0.5f)),
-                new VHelper(c1,    uvTL1, ao1),
-                new VHelper(c1c2,  uvTL2, lerp(ao1, ao2, 0.5f)),
-                new VHelper(center,uvTL3, (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(vertexTL[0], uvTL[1], lerp(ao0, ao1, 0.5f)),
+                new VHelper(vertexTL[1], uvTL[0], ao1),
+                new VHelper(vertexTL[2], uvTL[3], lerp(ao1, ao2, 0.5f)),
+                new VHelper(vertexTL[3], uvTL[2], (ao0 + ao1 + ao2 + ao3) * 0.25f),
                 tex, sunLight, blockLight
         );
 
-        // Top-right quad
+        // Bottom right
+        VectorM3f[] vertexBR = new VectorM3f[]{c0c3, center, c2c3, c3};
         emitQuad(
-                new VHelper(center,uvTR0, (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                new VHelper(c1c2,  uvTR1, lerp(ao1, ao2, 0.5f)),
-                new VHelper(c2,    uvTR2, ao2),
-                new VHelper(c2c3,  uvTR3, lerp(ao2, ao3, 0.5f)),
+                new VHelper(vertexBR[0], uvBR[1], (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(vertexBR[1], uvBR[0], lerp(ao1, ao2, 0.5f)),
+                new VHelper(vertexBR[2], uvBR[3], ao2),
+                new VHelper(vertexBR[3], uvBR[2], lerp(ao2, ao3, 0.5f)),
                 tex, sunLight, blockLight
         );
 
-        // Top-left quad
+        // Bottom left
+        VectorM3f[] vertexBL = new VectorM3f[]{center, c1c2, c2, c2c3};
         emitQuad(
-                new VHelper(c0c3,  uvBR0, lerp(ao0, ao3, 0.5f)),
-                new VHelper(center,uvBR1, (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                new VHelper(c2c3,  uvBR2, lerp(ao2, ao3, 0.5f)),
-                new VHelper(c3,    uvBR3, ao3),
+                new VHelper(vertexBL[0], uvBL[1], lerp(ao0, ao3, 0.5f)),
+                new VHelper(vertexBL[1], uvBL[0], (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(vertexBL[2], uvBL[3], lerp(ao2, ao3, 0.5f)),
+                new VHelper(vertexBL[3], uvBL[2], ao3),
                 tex, sunLight, blockLight
         );
     }
 
-    private Direction orientStep(Direction facing, String axis, Direction face) {
-        if (axis==null) {
-            return face;
+    private Direction resolveTextureDirection(String axis, Direction facing, Direction face) {
+        if (axis==null && facing != null) {
+            return switch(facing) {
+                case NORTH -> switch (face) {
+                    case NORTH -> Direction.NORTH;
+                    case EAST -> Direction.EAST;
+                    case SOUTH -> Direction.SOUTH;
+                    case WEST -> Direction.WEST;
+                    case UP -> Direction.UP;
+                    case DOWN -> Direction.DOWN;
+                };
+                case EAST -> switch (face) {
+                    case NORTH -> Direction.WEST;
+                    case EAST -> Direction.NORTH;
+                    case SOUTH -> Direction.EAST;
+                    case WEST -> Direction.SOUTH;
+                    case UP -> Direction.UP;
+                    case DOWN -> Direction.DOWN;
+                };
+                case SOUTH -> switch (face) {
+                    case NORTH -> Direction.SOUTH;
+                    case EAST -> Direction.WEST;
+                    case SOUTH -> Direction.NORTH;
+                    case WEST -> Direction.EAST;
+                    case UP -> Direction.UP;
+                    case DOWN -> Direction.DOWN;
+                };
+                case WEST -> switch (face) {
+                    case NORTH -> Direction.EAST;
+                    case EAST -> Direction.SOUTH;
+                    case SOUTH -> Direction.WEST;
+                    case WEST -> Direction.NORTH;
+                    case UP -> Direction.UP;
+                    case DOWN -> Direction.DOWN;
+                };
+                case UP -> switch (face) {
+                    case NORTH -> Direction.DOWN;
+                    case EAST -> Direction.EAST;
+                    case SOUTH -> Direction.UP;
+                    case WEST -> Direction.WEST;
+                    case UP -> Direction.NORTH;
+                    case DOWN -> Direction.SOUTH;
+                };
+                case DOWN -> switch (face) {
+                    case NORTH -> Direction.UP;
+                    case EAST -> Direction.EAST;
+                    case SOUTH -> Direction.DOWN;
+                    case WEST -> Direction.WEST;
+                    case UP -> Direction.SOUTH;
+                    case DOWN -> Direction.NORTH;
+                };
+            };
         }
-        switch (axis) {
-            case "x" -> {
-                if (facing == Direction.NORTH || facing == Direction.SOUTH) {
-                    if (face == Direction.EAST || face == Direction.WEST) {
+        else if (axis != null) {
+            switch (axis) {
+                case "x" -> {
+                    if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
                         return Direction.UP;
+                    } else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
+                        return Direction.NORTH;
                     } else {
-                        return Direction.WEST;
+                        return Direction.NORTH;
                     }
-                } else {
-                    if (face == Direction.NORTH || face == Direction.SOUTH) {
+                }
+                case "y" -> {
+                    return face;
+                }
+                case "z" -> {
+                    if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
+                        return Direction.NORTH;
+                    } else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
                         return Direction.UP;
                     } else {
-                        return Direction.WEST;
+                        return Direction.EAST;
                     }
                 }
             }
-            case "y" -> {
-                return face;
-            }
-            case "z" -> {
-                if (facing == Direction.NORTH || facing == Direction.SOUTH) {
-                    if (face == Direction.NORTH || face == Direction.SOUTH) {
-                        return Direction.UP;
-                    } else {
-                        return Direction.WEST;
-                    }
-                } else {
-                    if (face == Direction.EAST || face == Direction.WEST) {
-                        return Direction.UP;
-                    } else {
-                        return Direction.WEST;
-                    }
-                }
-            }
         }
-        return facing;
+        return face;
     }
 
-    private Direction orientPanel(Direction facing, String axis, Direction face) {
-        if (axis==null) {
-            return face;
+    private int rotationStepsByAxisAndFacing(Direction facing, String axis, Direction face){
+
+        if (axis==null && facing != null) {
+            return calculateUVRotationForFace(facing, face);
         }
-        if (axis.equals("y")) {
-            if (facing.equals(Direction.UP) || facing.equals(Direction.DOWN)) {
-                return face;
-            }
-            else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
-                return Direction.UP;
-            }
-            else {
-                return Direction.EAST;
-            }
-        } else if (axis.equals("x")) {
-            if (facing.equals(Direction.UP) || facing.equals(Direction.DOWN)) {
-                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
-                    return Direction.UP;
+        else if (axis != null) {
+            switch (axis) {
+                case "x" -> {
+                    if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
+                        return 0;
+                    } else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
+                        return 1;
+                    } else {
+                        return 1;
+                    }
                 }
-                else {
-                    return Direction.EAST;
+                case "y" -> {
+                    return 0;
                 }
-            } else if (facing.equals(Direction.WEST) || facing.equals(Direction.EAST)) {
-                return face;
-            }
-            else {
-                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
-                    return Direction.UP;
-                }
-                else {
-                    return Direction.EAST;
+                case "z" -> {
+                    return 0;
                 }
             }
         }
-        //Z/North
-        else {
-            if (facing.equals(Direction.UP) || facing.equals(Direction.DOWN)) {
-                if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
-                    return Direction.UP;
-                }
-                else {
-                    return Direction.EAST;
-                }
-            } else if (facing.equals(Direction.NORTH) || facing.equals(Direction.SOUTH)) {
-                return face;
-            }
-            else {
-                if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
-                    return Direction.UP;
-                }
-                else {
-                    return Direction.EAST;
-                }
-            }
+        return 0;
+    }
+
+    private void rotateUVs (VectorM2f[] uvArray, int rotationSteps) {
+        for (VectorM2f uv : uvArray) {
+            rotateUV(uv, rotationSteps);
         }
+    }
+
+    private void rotateUV (VectorM2f uv, int rotationSteps) {
+        for (int i = 0; i < rotationSteps; i++) {
+            float cx = TrigMath.cos(Math.PI/2), cy = TrigMath.sin(Math.PI/2);
+            uv.translate(-0.5f, -0.5f);
+            uv.rotate(cx, cy);
+            uv.translate(0.5f, 0.5f);
+        }
+    }
+
+    private VectorM2f[] swapUV(VectorM2f[] uvArray) {
+        VectorM2f[] swapped = new VectorM2f[uvArray.length];
+        for (int i = 0; i < uvArray.length; i++) {
+            swapped[i] = new VectorM2f(uvArray[i].y, uvArray[i].x);
+        }
+        return swapped;
     }
 
     private void emitQuad(
@@ -444,15 +529,10 @@ public class CopycatRenderer implements BlockRenderer {
         tileModel.setAOs(f2, a.ao, c.ao, d.ao);
     }
 
+
     private static float lerp(float a, float b, float t) {
         return a + (b - a) * t;
     }
-
-    private ExtendedBlock getRotationRelativeBlock(Vector3i direction) {
-        return getRotationRelativeBlock(direction.getX(), direction.getY(), direction.getZ());
-    }
-
-    private final VectorM3f rotationRelativeBlockDirection = new VectorM3f(0, 0, 0);
 
     private ExtendedBlock getRotationRelativeBlock(int dx, int dy, int dz) {
         rotationRelativeBlockDirection.set(dx, dy, dz);
@@ -491,5 +571,36 @@ public class CopycatRenderer implements BlockRenderer {
 
         if (occluding > 3) occluding = 3;
         return Math.max(0f, Math.min(1f - occluding * 0.25f, 1f));
+    }
+
+    private int calculateUVRotationForFace(Direction facing, Direction face) {
+        return switch(facing) {
+            case NORTH -> {
+                yield 0;
+            }
+            case EAST -> {
+                if (face.equals(Direction.UP) || face.equals(Direction.DOWN)) {
+                    yield 1;
+                } else {
+                    yield 0;
+                }
+            }
+            case SOUTH -> {
+                if (face.equals(Direction.UP) || face.equals(Direction.DOWN)) {
+                    yield 2;
+                } else {
+                    yield 0;
+                }
+            }
+            case WEST -> {
+                if (face.equals(Direction.UP) || face.equals(Direction.DOWN)) {
+                    yield 3;
+                } else {
+                    yield 0;
+                }
+            }
+            case UP -> 0;
+            case DOWN -> 0;
+        };
     }
 }
