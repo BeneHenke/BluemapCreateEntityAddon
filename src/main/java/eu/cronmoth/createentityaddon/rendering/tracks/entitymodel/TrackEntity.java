@@ -12,14 +12,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class TrackEntity extends MCABlockEntity  {
-    public static  List<TrackEntity> trackEntities = new ArrayList<>();
     private @NBTName("Connections") List<Connection> connections = new ArrayList<>();
     private @NBTName("Starts") List<Double[]> starts = new ArrayList<>();
     private @NBTName("keepPacked") boolean keepPacked;
-
-
-    public TrackEntity() {
-        super();
-        trackEntities.add(this);
-    }
 }
