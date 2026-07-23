@@ -84,7 +84,7 @@ public class ChainConveyorRenderer implements BlockRenderer {
             MatrixM4f portMatrix = new MatrixM4f();
             portMatrix.identity()
                     .translate(-0.5f, -0.5f, -0.5f)
-                    .rotateXYZ(0, rotation[1], 0)
+                    .rotateYXZ(0, rotation[1], 0)
                     .translate(0.5f, 0.5f, 0.5f);
             blockModel.transform(portMatrix);
             blockModel.initialize();
@@ -97,7 +97,7 @@ public class ChainConveyorRenderer implements BlockRenderer {
                 MatrixM4f matrix = new MatrixM4f();
                 matrix.identity()
                         .translate(-0.5f, -0.5f, -0.5f)
-                        .rotateXYZ(rotation[0], rotation[1], rotation[2])
+                        .rotateYXZ(rotation[0], rotation[1], rotation[2])
                         .translate(0.5f, 0.5f, 0.5f)
                         .translate(
                                 linePoint.x + leftOffset.x,
@@ -154,13 +154,6 @@ public class ChainConveyorRenderer implements BlockRenderer {
         float yaw = (float) Math.atan2(dx, dz);
 
         float pitch = (float) Math.atan2(horizontal, dy);
-
-        System.out.printf(
-                "Dir=(%.1f, %.1f, %.1f) Pitch=%.1f Yaw=%.1f%n",
-                dx, dy, dz,
-                Math.toDegrees(pitch),
-                Math.toDegrees(yaw)
-        );
 
         return new float[]{
                 (float) Math.toDegrees(pitch),
