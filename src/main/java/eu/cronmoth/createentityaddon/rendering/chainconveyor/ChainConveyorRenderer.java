@@ -54,7 +54,7 @@ public class ChainConveyorRenderer implements BlockRenderer {
 
         if (!(block.getBlockEntity() instanceof ChainConveyorEntity entity)) return;
         if (entity.getConnections().isEmpty()) return;
-        Model chainModel = resourcePack.getModel(new ResourcePath<>( "minecraft", "block/chain"));
+        Model chainModel = resourcePack.getModels().get(new ResourcePath<>( "minecraft", "block/chain"));
         variant.getModel().setResource(chainModel);
         for (int[] c : entity.getConnections()) {
 
