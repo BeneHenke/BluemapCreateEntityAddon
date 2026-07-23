@@ -66,9 +66,6 @@ public class ContraptionBlock implements BlockAccess {
 
     @Override
     public BlockState getBlockState() {
-        double x = this.block.getCoords().getX()+this.x;
-        double y = this.block.getCoords().getY()+this.y;
-        double z = this.block.getCoords().getZ()+this.z;
         BlockAttribute block = contraption.getBlocks().get(new Vector3d(x,y,z));
         if (block == null) {
             return BlockState.AIR;
