@@ -54,7 +54,7 @@ public class ChainConveyorRenderer implements BlockRenderer {
 
         if (!(block.getBlockEntity() instanceof ChainConveyorEntity entity)) return;
         if (entity.getConnections().isEmpty()) return;
-        Model chainModel = resourcePack.getModel(new ResourcePath<>( "minecraft", "block/chain"));
+        Model chainModel = resourcePack.getModels().get(new ResourcePath<>( "minecraft", "block/chain"));
         variant.getModel().setResource(chainModel);
         for (int[] c : entity.getConnections()) {
 
@@ -84,7 +84,7 @@ public class ChainConveyorRenderer implements BlockRenderer {
             MatrixM4f portMatrix = new MatrixM4f();
             portMatrix.identity()
                     .translate(-0.5f, -0.5f, -0.5f)
-                    .rotate(0, rotation[1], 0)
+                    .rotateXYZ(0, rotation[1], 0)
                     .translate(0.5f, 0.5f, 0.5f);
             blockModel.transform(portMatrix);
             blockModel.initialize();
@@ -97,7 +97,7 @@ public class ChainConveyorRenderer implements BlockRenderer {
                 MatrixM4f matrix = new MatrixM4f();
                 matrix.identity()
                         .translate(-0.5f, -0.5f, -0.5f)
-                        .rotate(rotation[0], rotation[1], rotation[2])
+                        .rotateXYZ(rotation[0], rotation[1], rotation[2])
                         .translate(0.5f, 0.5f, 0.5f)
                         .translate(
                                 linePoint.x + leftOffset.x,

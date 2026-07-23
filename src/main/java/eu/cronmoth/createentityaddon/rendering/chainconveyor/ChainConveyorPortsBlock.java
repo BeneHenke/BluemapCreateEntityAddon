@@ -1,5 +1,6 @@
 package eu.cronmoth.createentityaddon.rendering.chainconveyor;
 
+import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.util.math.VectorM3f;
 import de.bluecolored.bluemap.core.world.BlockEntity;
 import de.bluecolored.bluemap.core.world.BlockState;
@@ -57,7 +58,7 @@ public class ChainConveyorPortsBlock implements BlockAccess {
     @Override
     public BlockState getBlockState() {
         if (getX() == pos.x || getY() == pos.y|| getZ() == pos.z) {
-            return new BlockState("create:chain_conveyor_ports");
+            return new BlockState(new Key("create:chain_conveyor_ports"));
         }
         return  BlockState.AIR;
     }
