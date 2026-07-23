@@ -5,6 +5,7 @@ import de.bluecolored.bluemap.core.map.hires.RenderSettings;
 import de.bluecolored.bluemap.core.map.hires.TileModelView;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
+import de.bluecolored.bluemap.core.map.hires.block.BlockStateModelRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.ResourceModelRenderer;
 import de.bluecolored.bluemap.core.resources.ResourcePath;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
@@ -14,8 +15,11 @@ import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.util.math.Color;
 import de.bluecolored.bluemap.core.util.math.MatrixM4f;
 import de.bluecolored.bluemap.core.util.math.VectorM3f;
+import de.bluecolored.bluemap.core.world.block.Block;
+import de.bluecolored.bluemap.core.world.block.BlockAccess;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
 import de.bluecolored.bluemap.core.world.block.ExtendedBlock;
+import de.bluecolored.bluemap.core.world.mca.blockentity.MCABlockEntity;
 import eu.cronmoth.createentityaddon.rendering.chainconveyor.entitymodel.ChainConveyorEntity;
 import eu.cronmoth.createentityaddon.rendering.tracks.ConnectionBlock;
 
@@ -32,6 +36,7 @@ public class ChainConveyorRenderer implements BlockRenderer {
     private final ResourceModelRenderer modelRenderer;
     private final ResourcePack resourcePack;
     private final RenderSettings renderSettings;
+    private final BlockStateModelRenderer blockRenderer;
 
     private TileModelView blockModel;
 
@@ -39,46 +44,73 @@ public class ChainConveyorRenderer implements BlockRenderer {
         this.resourcePack = resourcePack;
         this.modelRenderer = new ResourceModelRenderer(resourcePack, textureGallery, renderSettings);
         this.renderSettings = renderSettings;
-
+        this.blockRenderer = new BlockStateModelRenderer(resourcePack, textureGallery, renderSettings);
     }
 
     @Override
     public void render(BlockNeighborhood block, Variant variant, TileModelView tileModel, Color blockColor) {
         this.blockModel = tileModel;
         blockModel.initialize();
-        System.out.println("Rendering chain conveyor at ");
 
         if (!(block.getBlockEntity() instanceof ChainConveyorEntity entity)) return;
         if (entity.getConnections().isEmpty()) return;
         Model chainModel = resourcePack.getModel(new ResourcePath<>( "minecraft", "block/chain"));
         variant.getModel().setResource(chainModel);
         for (int[] c : entity.getConnections()) {
-            int start = blockModel.getStart();
-            float[] rotation = computeRotation(new VectorM3f(0,0,0), new VectorM3f(c[0], c[1], c[2]));
-            for (VectorM3f linePoint : lineSegments(new VectorM3f(0,0,0), new VectorM3f(c[0], c[1], c[2]))) {
-                blockModel.initialize();
+
+            VectorM3f originalDirection = new VectorM3f(c[0], c[1], c[2]);
+
+            VectorM3f horizontal = horizontalDirection(originalDirection);
+
+            // Move endpoints one block outward
+            VectorM3f start = new VectorM3f(
+                    horizontal.x,
+                    0,
+                    horizontal.z
+            );
+
+            VectorM3f end = new VectorM3f(
+                    originalDirection.x - horizontal.x,
+                    originalDirection.y,
+                    originalDirection.z - horizontal.z
+            );
+
+            float[] rotation = computeRotation(start, end);
+
+            BlockAccess blockAccess = new ChainConveyorPortsBlock(block, new VectorM3f(block.getX(), block.getY(), block.getZ()));
+            BlockNeighborhood neighborhood = new BlockNeighborhood(blockAccess, resourcePack, renderSettings,block.getDimensionType());
+            neighborhood.set(block.getX(), block.getY(), block.getZ());
+            blockRenderer.render(neighborhood, tileModel, new Color());
+            MatrixM4f portMatrix = new MatrixM4f();
+            portMatrix.identity()
+                    .translate(-0.5f, -0.5f, -0.5f)
+                    .rotate(0, rotation[1], 0)
+                    .translate(0.5f, 0.5f, 0.5f);
+            blockModel.transform(portMatrix);
+            blockModel.initialize();
+
+            VectorM3f leftOffset = computeLeftOffset(originalDirection);
+
+            for (VectorM3f linePoint : lineSegments(start, end)) {
                 modelRenderer.render(block, variant, blockModel, blockColor);
+
                 MatrixM4f matrix = new MatrixM4f();
                 matrix.identity()
-                        .translate(linePoint.x,linePoint.y,linePoint.z);
+                        .translate(-0.5f, -0.5f, -0.5f)
+                        .rotate(rotation[0], rotation[1], rotation[2])
+                        .translate(0.5f, 0.5f, 0.5f)
+                        .translate(
+                                linePoint.x + leftOffset.x,
+                                linePoint.y + leftOffset.y,
+                                linePoint.z + leftOffset.z
+                        );
+
                 blockModel.transform(matrix);
+                blockModel.initialize();
             }
-            blockModel.initialize();
         }
     }
 
-
-    /**
-     * Erzeugt eine Liste von Punkten entlang der geraden Strecke von {@code start} nach {@code end}.
-     * Zwischen aufeinanderfolgenden Punkten ist der Abstand 1 (Segmentlänge = 1). Das letzte
-     * Segment kann kürzer sein, wenn die Gesamtlänge kein Vielfaches von 1 ist. Start wird immer
-     * als erstes Element zurückgegeben, End wird nur angehängt, falls es nicht bereits durch einen
-     * ganzen Schritt erreicht wurde.
-     *
-     * @param start Startpunkt (inklusive)
-     * @param end Endpunkt (inklusive falls Restlänge &gt; 0)
-     * @return unveränderliche Liste von VectorM3f-Punkten entlang der Strecke
-     */
     public static List<VectorM3f> lineSegments(VectorM3f start, VectorM3f end) {
         if (start == null || end == null) return Collections.emptyList();
 
@@ -88,11 +120,6 @@ public class ChainConveyorRenderer implements BlockRenderer {
 
         float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
         final float EPS = 1e-6f;
-
-        if (dist < EPS) {
-            // Start und End sind gleich
-            return Collections.singletonList(new VectorM3f(start.x, start.y, start.z));
-        }
 
         float ux = dx / dist;
         float uy = dy / dist;
@@ -122,11 +149,64 @@ public class ChainConveyorRenderer implements BlockRenderer {
         float dy = end.y - start.y;
         float dz = end.z - start.z;
 
-        float yaw = (float) Math.toDegrees(Math.atan2(dx, dz));
-        float pitch = (float) Math.toDegrees(
-                Math.atan2(dy, Math.sqrt(dx * dx + dz * dz))
+        float horizontal = (float) Math.sqrt(dx * dx + dz * dz);
+
+        float yaw = (float) Math.atan2(dx, dz);
+
+        float pitch = (float) Math.atan2(horizontal, dy);
+
+        System.out.printf(
+                "Dir=(%.1f, %.1f, %.1f) Pitch=%.1f Yaw=%.1f%n",
+                dx, dy, dz,
+                Math.toDegrees(pitch),
+                Math.toDegrees(yaw)
         );
 
-        return new float[]{pitch, yaw, 0f};
+        return new float[]{
+                (float) Math.toDegrees(pitch),
+                (float) Math.toDegrees(yaw),
+                0f
+        };
+    }
+
+    public static VectorM3f computeLeftOffset(VectorM3f direction) {
+        // Left vector in the horizontal XZ plane
+        VectorM3f left = new VectorM3f(
+                -direction.z,
+                -0.125f,
+                direction.x
+        );
+
+        float length = (float) Math.sqrt(
+                left.x * left.x +
+                        left.z * left.z
+        );
+
+        if (length > 0) {
+            left.x /= length;
+            left.z /= length;
+        }
+
+        left.x *= 0.7f;
+        left.z *= 0.7f;
+
+        return left;
+    }
+
+    public static VectorM3f horizontalDirection(VectorM3f direction) {
+        float length = (float) Math.sqrt(
+                direction.x * direction.x +
+                        direction.z * direction.z
+        );
+
+        if (length == 0) {
+            return new VectorM3f(0, 0, 0);
+        }
+
+        return new VectorM3f(
+                direction.x / length,
+                0,
+                direction.z / length
+        );
     }
 }
