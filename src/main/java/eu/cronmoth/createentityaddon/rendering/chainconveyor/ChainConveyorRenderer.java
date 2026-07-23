@@ -155,13 +155,6 @@ public class ChainConveyorRenderer implements BlockRenderer {
 
         float pitch = (float) Math.atan2(horizontal, dy);
 
-        System.out.printf(
-                "Dir=(%.1f, %.1f, %.1f) Pitch=%.1f Yaw=%.1f%n",
-                dx, dy, dz,
-                Math.toDegrees(pitch),
-                Math.toDegrees(yaw)
-        );
-
         return new float[]{
                 (float) Math.toDegrees(pitch),
                 (float) Math.toDegrees(yaw),
