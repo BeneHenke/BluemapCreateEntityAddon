@@ -10,6 +10,9 @@ import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.world.mca.MCAWorld;
 import de.bluecolored.bluemap.core.world.mca.blockentity.BlockEntityType;
 import de.bluecolored.bluemap.core.world.mca.entity.EntityType;
+import eu.cronmoth.createentityaddon.rendering.chainconveyor.ChainConveyorBlockType;
+import eu.cronmoth.createentityaddon.rendering.chainconveyor.ChainConveyorRenderer;
+import eu.cronmoth.createentityaddon.rendering.chainconveyor.entitymodel.ChainConveyorEntity;
 import eu.cronmoth.createentityaddon.rendering.copycats.CopycatBlockType;
 import eu.cronmoth.createentityaddon.rendering.copycats.entitymodel.CopycatBlockEntity;
 import eu.cronmoth.createentityaddon.rendering.copycats.CopycatRenderer;
@@ -35,6 +38,9 @@ public class CreateEntityAddon implements Runnable {
         BlockEntityType.REGISTRY.register(new CopycatBlockType.Impl(new Key("create", "copycat"), CopycatBlockEntity.class));
         BlockRendererType.REGISTRY.register(TrackRenderer.TYPE);
         BlockEntityType.REGISTRY.register(new TrackBlockType.Impl(new Key("create", "track"), TrackEntity.class));
+        BlockRendererType.REGISTRY.register(ChainConveyorRenderer.TYPE);
+        BlockEntityType.REGISTRY.register(new ChainConveyorBlockType.Impl(new Key("create", "chain_conveyor"), ChainConveyorEntity.class));
+
     }
 
     @Override
