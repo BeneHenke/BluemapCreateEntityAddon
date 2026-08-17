@@ -10,10 +10,12 @@ import de.bluecolored.bluemap.core.map.hires.TileModel;
 import de.bluecolored.bluemap.core.map.hires.TileModelView;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
+import de.bluecolored.bluemap.core.resources.BlockColorCalculatorFactory;
 import de.bluecolored.bluemap.core.resources.ResourcePath;
 import de.bluecolored.bluemap.core.resources.pack.ResourcePool;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variant;
+import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variants;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Element;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Face;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Model;
@@ -23,6 +25,7 @@ import de.bluecolored.bluemap.core.util.math.Color;
 import de.bluecolored.bluemap.core.util.math.MatrixM4f;
 import de.bluecolored.bluemap.core.util.math.VectorM2f;
 import de.bluecolored.bluemap.core.util.math.VectorM3f;
+import de.bluecolored.bluemap.core.world.BlockState;
 import de.bluecolored.bluemap.core.world.LightData;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
 import de.bluecolored.bluemap.core.world.block.ExtendedBlock;
@@ -44,12 +47,17 @@ public class CopycatRenderer implements BlockRenderer {
 
     private final ResourcePack resourcePack;
     private final TextureGallery textureGallery;
+    private final BlockColorCalculatorFactory.BlockColorCalculator blockColorCalculator;
     private final VectorM3f[] corners = new VectorM3f[8];
 
     private BlockNeighborhood block;
     private Variant variant;
     private Model modelResource;
     private TileModelView blockModel;
+    private float materialYRotation = 0f;
+    private BlockState materialBlockState;
+
+    private final Color tintColor = new Color();
     private final VectorM3f rotationRelativeBlockDirection = new VectorM3f(0, 0, 0);
 
     private final MatrixM4f elementTransform = new MatrixM4f();
@@ -57,6 +65,7 @@ public class CopycatRenderer implements BlockRenderer {
     public CopycatRenderer(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings) {
         this.resourcePack = resourcePack;
         this.textureGallery = textureGallery;
+        this.blockColorCalculator = resourcePack.getColorCalculatorFactory().createCalculator();
 
         for (int i = 0; i < corners.length; i++) corners[i] = new VectorM3f(0, 0, 0);
     }
@@ -67,8 +76,7 @@ public class CopycatRenderer implements BlockRenderer {
         this.variant = variant;
         this.blockModel = blockModel;
         float blockColorOpacity = 0f;
-        ResourcePool<Model> models = resourcePack.getModels();
-        this.modelResource = variant.getModel().getResource(models::get);
+        this.modelResource = variant.getModel().getResource(resourcePack::getModel);
 
         if (!(block.getBlockEntity() instanceof CopycatBlockEntity entity)) return;
         if (modelResource == null) return;
@@ -79,11 +87,17 @@ public class CopycatRenderer implements BlockRenderer {
 
         String[] name = entity.getMaterial().getName().split(":");
         Map<String,String> materialProperties = entity.getMaterial().getProperties();
-        Model copiedModel = resourcePack.getModels().get(new ResourcePath<>(name[0] + ":block/" + name[1]));
+        //create BlockState for the copied block
+        this.materialBlockState = new BlockState(
+                entity.getMaterial().getName(),
+                materialProperties != null ? materialProperties : Map.of());
+        this.tintColor.set(0, 0, 0, -1, true);
+        this.materialYRotation = resolveMaterialYRotation(materialBlockState);
+        Model copiedModel = resourcePack.getModel(new ResourcePath<>(name[0] + ":block/" + name[1]));
         if (name[1].equals("copycat_base")) {
-            copiedModel = resourcePack.getModels().get(new ResourcePath<>(name[0] + ":block/copycat_base/block"));
+            copiedModel = resourcePack.getModel(new ResourcePath<>(name[0] + ":block/copycat_base/block"));
         }
-        //System.out.println("------------" + name[1]);
+
         if (copiedModel == null) return;
 
         int modelStart = blockModel.getStart();
@@ -102,6 +116,27 @@ public class CopycatRenderer implements BlockRenderer {
 
         blockModel.initialize(modelStart);
         if (variant.isTransformed()) blockModel.transform(variant.getTransformMatrix());
+    }
+
+    private float resolveMaterialYRotation(BlockState materialState) {
+        if (materialState.getProperties().isEmpty()) return 0f;
+
+        de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.BlockState resolvedState = resourcePack.getBlockState(materialState);
+        if (resolvedState == null) return 0f;
+
+        Variants variants = resolvedState.getVariants();
+        if (variants == null) return 0f;
+
+        float[] result = {0f};
+        variants.forEach(materialState, 0, 0, 0, v -> result[0] = v.getY());
+        return result[0];
+    }
+
+    private Color resolveTintColor() {
+        if (tintColor.a >= 0) return tintColor;
+        if (materialBlockState == null) return tintColor.set(1f, 1f, 1f, 1f, true);
+        blockColorCalculator.getBlockColor(new MaterialStateBlock(block, materialBlockState), tintColor);
+        return tintColor;
     }
 
     private void buildModelElement(Element element, TileModelView model, Model copiedModel, String half, Direction facing, Map<String, String> materialProperties) {
@@ -218,12 +253,12 @@ public class CopycatRenderer implements BlockRenderer {
 
     private VectorM3f[] getFaceCorners(VectorM3f[] c, Direction dir) {
         return switch (dir) {
-            case DOWN -> new VectorM3f[]{c[2], c[1], c[0], c[3]};     // Boden: minY (von außen unten) 0 3 2 1
-            case UP -> new VectorM3f[]{c[7], c[4], c[5], c[6]};       // Decke: maxY (von außen oben) 5 6 7 4
-            case NORTH -> new VectorM3f[]{c[4], c[7], c[3], c[0]};    // Vorne: minZ (von außen, CW)
-            case SOUTH -> new VectorM3f[]{c[6], c[5], c[1], c[2]};    // Hinten: maxZ (von außen, CW)
-            case WEST -> new VectorM3f[]{c[5], c[4], c[0], c[1]};     // Links: minX (von außen, CW)
-            case EAST -> new VectorM3f[]{c[7], c[6], c[2], c[3]};     // Rechts: maxX (von außen, CW)
+            case DOWN -> new VectorM3f[]{c[2], c[1], c[0], c[3]};
+            case UP -> new VectorM3f[]{c[7], c[4], c[5], c[6]};
+            case NORTH -> new VectorM3f[]{c[4], c[7], c[3], c[0]};
+            case SOUTH -> new VectorM3f[]{c[6], c[5], c[1], c[2]};
+            case WEST -> new VectorM3f[]{c[5], c[4], c[0], c[1]};
+            case EAST -> new VectorM3f[]{c[7], c[6], c[2], c[3]};
         };
     }
 
@@ -304,22 +339,23 @@ public class CopycatRenderer implements BlockRenderer {
                 new VectorM2f(1, 1),
                 new VectorM2f(1-factorC0C1, 1)};
 
-        int rotationSteps = Math.floorDiv(face.getRotation(), 90) % 4;
-//        System.out.println("dir: " + dir.toString());
-//        System.out.println(resolveTextureDirection(axis, facing, dir).toString());
-//        System.out.println("rotationSteps: " + rotationSteps);
-//        System.out.println(face.getUv());
-        if (rotationSteps < 0) rotationSteps += 4;
-        rotationSteps = rotationSteps + rotationStepsByAxisAndFacing(facing, axis, dir);
+
+        int rotationSteps = Math.floorMod(
+                -(Math.floorDiv(face.getRotation(), 90) + rotationStepsByAxisAndFacing(facing, axis, dir)),
+                4);
         rotateUVs(uvTL, rotationSteps);
         rotateUVs(uvTR, rotationSteps);
         rotateUVs(uvBL, rotationSteps);
         rotateUVs(uvBR, rotationSteps);
-//        System.out.println(uvTL[0]);
 
         int tex = textureGallery.get(face.getTexture().getTexturePath(copiedModel.getTextures()::get));
 
-        // ----- lighting -----
+        float tintR = 1f, tintG = 1f, tintB = 1f;
+        if (face.getTintindex() >= 0) {
+            Color tint = resolveTintColor();
+            tintR = tint.r; tintG = tint.g; tintB = tint.b;
+        }
+
         LightData light = block.getLightData();
         int sunLight = light.getSkyLight();
         int blockLight = light.getBlockLight();
@@ -331,7 +367,7 @@ public class CopycatRenderer implements BlockRenderer {
                 new VHelper(vertexTR[1], uvTR[0], lerp(ao0, ao1, 0.5f)),
                 new VHelper(vertexTR[2], uvTR[3], (ao0 + ao1 + ao2 + ao3) * 0.25f),
                 new VHelper(vertexTR[3], uvTR[2], lerp(ao0, ao3, 0.5f)),
-                tex, sunLight, blockLight
+                tex, sunLight, blockLight, tintR, tintG, tintB
         );
 
         // Top left
@@ -341,7 +377,7 @@ public class CopycatRenderer implements BlockRenderer {
                 new VHelper(vertexTL[1], uvTL[0], ao1),
                 new VHelper(vertexTL[2], uvTL[3], lerp(ao1, ao2, 0.5f)),
                 new VHelper(vertexTL[3], uvTL[2], (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                tex, sunLight, blockLight
+                tex, sunLight, blockLight, tintR, tintG, tintB
         );
 
         // Bottom right
@@ -351,7 +387,7 @@ public class CopycatRenderer implements BlockRenderer {
                 new VHelper(vertexBR[1], uvBR[0], lerp(ao1, ao2, 0.5f)),
                 new VHelper(vertexBR[2], uvBR[3], ao2),
                 new VHelper(vertexBR[3], uvBR[2], lerp(ao2, ao3, 0.5f)),
-                tex, sunLight, blockLight
+                tex, sunLight, blockLight, tintR, tintG, tintB
         );
 
         // Bottom left
@@ -361,46 +397,14 @@ public class CopycatRenderer implements BlockRenderer {
                 new VHelper(vertexBL[1], uvBL[0], (ao0 + ao1 + ao2 + ao3) * 0.25f),
                 new VHelper(vertexBL[2], uvBL[3], lerp(ao2, ao3, 0.5f)),
                 new VHelper(vertexBL[3], uvBL[2], ao3),
-                tex, sunLight, blockLight
+                tex, sunLight, blockLight, tintR, tintG, tintB
         );
     }
 
     private Direction resolveTextureDirection(String axis, Direction facing, Direction face) {
         if (axis==null && facing != null) {
-            return switch(facing) {
-                case NORTH -> switch (face) {
-                    case NORTH -> Direction.NORTH;
-                    case EAST -> Direction.EAST;
-                    case SOUTH -> Direction.SOUTH;
-                    case WEST -> Direction.WEST;
-                    case UP -> Direction.UP;
-                    case DOWN -> Direction.DOWN;
-                };
-                case EAST -> switch (face) {
-                    case NORTH -> Direction.WEST;
-                    case EAST -> Direction.NORTH;
-                    case SOUTH -> Direction.EAST;
-                    case WEST -> Direction.SOUTH;
-                    case UP -> Direction.UP;
-                    case DOWN -> Direction.DOWN;
-                };
-                case SOUTH -> switch (face) {
-                    case NORTH -> Direction.SOUTH;
-                    case EAST -> Direction.WEST;
-                    case SOUTH -> Direction.NORTH;
-                    case WEST -> Direction.EAST;
-                    case UP -> Direction.UP;
-                    case DOWN -> Direction.DOWN;
-                };
-                case WEST -> switch (face) {
-                    case NORTH -> Direction.EAST;
-                    case EAST -> Direction.SOUTH;
-                    case SOUTH -> Direction.WEST;
-                    case WEST -> Direction.NORTH;
-                    case UP -> Direction.UP;
-                    case DOWN -> Direction.DOWN;
-                };
-                case UP -> switch (face) {
+            if (facing == Direction.UP) {
+                return switch (face) {
                     case NORTH -> Direction.DOWN;
                     case EAST -> Direction.EAST;
                     case SOUTH -> Direction.UP;
@@ -408,7 +412,9 @@ public class CopycatRenderer implements BlockRenderer {
                     case UP -> Direction.NORTH;
                     case DOWN -> Direction.SOUTH;
                 };
-                case DOWN -> switch (face) {
+            }
+            if (facing == Direction.DOWN) {
+                return switch (face) {
                     case NORTH -> Direction.UP;
                     case EAST -> Direction.EAST;
                     case SOUTH -> Direction.DOWN;
@@ -416,7 +422,10 @@ public class CopycatRenderer implements BlockRenderer {
                     case UP -> Direction.SOUTH;
                     case DOWN -> Direction.NORTH;
                 };
-            };
+            }
+
+            int steps = Math.floorMod(Math.round(materialYRotation / 90f), 4);
+            return rotateHorizontalDirection(face, steps);
         }
         else if (axis != null) {
             switch (axis) {
@@ -446,10 +455,27 @@ public class CopycatRenderer implements BlockRenderer {
         return face;
     }
 
+    private Direction rotateHorizontalDirection(Direction dir, int steps) {
+        if (dir == Direction.UP || dir == Direction.DOWN) return dir;
+        Direction result = dir;
+        for (int i = 0; i < steps; i++) {
+            result = switch (result) {
+                case NORTH -> Direction.WEST;
+                case WEST -> Direction.SOUTH;
+                case SOUTH -> Direction.EAST;
+                case EAST -> Direction.NORTH;
+                default -> result;
+            };
+        }
+        return result;
+    }
+
     private int rotationStepsByAxisAndFacing(Direction facing, String axis, Direction face){
 
         if (axis==null && facing != null) {
-            return calculateUVRotationForFace(facing, face);
+            if (facing == Direction.UP || facing == Direction.DOWN) return 0;
+            int steps = Math.floorMod(Math.round(materialYRotation / 90f), 4);
+            return (face == Direction.UP || face == Direction.DOWN) ? steps : 0;
         }
         else if (axis != null) {
             switch (axis) {
@@ -457,9 +483,9 @@ public class CopycatRenderer implements BlockRenderer {
                     if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
                         return 0;
                     } else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
-                        return 1;
+                        return -1;
                     } else {
-                        return 1;
+                        return -1;
                     }
                 }
                 case "y" -> {
@@ -498,7 +524,8 @@ public class CopycatRenderer implements BlockRenderer {
 
     private void emitQuad(
             VHelper a, VHelper b, VHelper c, VHelper d,
-            int tex, int sunLight, int blockLight
+            int tex, int sunLight, int blockLight,
+            float tintR, float tintG, float tintB
     ) {
         blockModel.initialize();
         blockModel.add(2);
@@ -516,8 +543,8 @@ public class CopycatRenderer implements BlockRenderer {
         tileModel.setMaterialIndex(f1, tex);
         tileModel.setMaterialIndex(f2, tex);
 
-        tileModel.setColor(f1, 1, 1, 1);
-        tileModel.setColor(f2, 1, 1, 1);
+        tileModel.setColor(f1, tintR, tintG, tintB);
+        tileModel.setColor(f2, tintR, tintG, tintB);
 
         tileModel.setBlocklight(f1, blockLight);
         tileModel.setBlocklight(f2, blockLight);
@@ -573,34 +600,4 @@ public class CopycatRenderer implements BlockRenderer {
         return Math.max(0f, Math.min(1f - occluding * 0.25f, 1f));
     }
 
-    private int calculateUVRotationForFace(Direction facing, Direction face) {
-        return switch(facing) {
-            case NORTH -> {
-                yield 0;
-            }
-            case EAST -> {
-                if (face.equals(Direction.UP) || face.equals(Direction.DOWN)) {
-                    yield 1;
-                } else {
-                    yield 0;
-                }
-            }
-            case SOUTH -> {
-                if (face.equals(Direction.UP) || face.equals(Direction.DOWN)) {
-                    yield 2;
-                } else {
-                    yield 0;
-                }
-            }
-            case WEST -> {
-                if (face.equals(Direction.UP) || face.equals(Direction.DOWN)) {
-                    yield 3;
-                } else {
-                    yield 0;
-                }
-            }
-            case UP -> 0;
-            case DOWN -> 0;
-        };
-    }
 }
