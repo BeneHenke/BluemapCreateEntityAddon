@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 
 public class CopycatRenderer implements BlockRenderer {
 
@@ -48,6 +49,7 @@ public class CopycatRenderer implements BlockRenderer {
     private final ResourcePack resourcePack;
     private final TextureGallery textureGallery;
     private final BlockColorCalculatorFactory.BlockColorCalculator blockColorCalculator;
+    private final Function<ResourcePath<Model>, Model> modelProvider;
     private final VectorM3f[] corners = new VectorM3f[8];
 
     private BlockNeighborhood block;
@@ -66,6 +68,7 @@ public class CopycatRenderer implements BlockRenderer {
         this.resourcePack = resourcePack;
         this.textureGallery = textureGallery;
         this.blockColorCalculator = resourcePack.getColorCalculatorFactory().createCalculator();
+        this.modelProvider = resourcePack.getModels()::get;
 
         for (int i = 0; i < corners.length; i++) corners[i] = new VectorM3f(0, 0, 0);
     }
@@ -76,7 +79,7 @@ public class CopycatRenderer implements BlockRenderer {
         this.variant = variant;
         this.blockModel = blockModel;
         float blockColorOpacity = 0f;
-        this.modelResource = variant.getModel().getResource(resourcePack::getModel);
+        this.modelResource = variant.getModel().getResource(modelProvider);
 
         if (!(block.getBlockEntity() instanceof CopycatBlockEntity entity)) return;
         if (modelResource == null) return;
@@ -89,13 +92,13 @@ public class CopycatRenderer implements BlockRenderer {
         Map<String,String> materialProperties = entity.getMaterial().getProperties();
         //create BlockState for the copied block
         this.materialBlockState = new BlockState(
-                entity.getMaterial().getName(),
+                new Key(entity.getMaterial().getName()),
                 materialProperties != null ? materialProperties : Map.of());
         this.tintColor.set(0, 0, 0, -1, true);
         this.materialYRotation = resolveMaterialYRotation(materialBlockState);
-        Model copiedModel = resourcePack.getModel(new ResourcePath<>(name[0] + ":block/" + name[1]));
+        Model copiedModel = resourcePack.getModels().get(new ResourcePath<>(name[0] + ":block/" + name[1]));
         if (name[1].equals("copycat_base")) {
-            copiedModel = resourcePack.getModel(new ResourcePath<>(name[0] + ":block/copycat_base/block"));
+            copiedModel = resourcePack.getModels().get(new ResourcePath<>(name[0] + ":block/copycat_base/block"));
         }
 
         if (copiedModel == null) return;
@@ -121,7 +124,8 @@ public class CopycatRenderer implements BlockRenderer {
     private float resolveMaterialYRotation(BlockState materialState) {
         if (materialState.getProperties().isEmpty()) return 0f;
 
-        de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.BlockState resolvedState = resourcePack.getBlockState(materialState);
+        de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.BlockState resolvedState =
+                resourcePack.getBlockStates().get(materialState.getId());
         if (resolvedState == null) return 0f;
 
         Variants variants = resolvedState.getVariants();
@@ -135,7 +139,7 @@ public class CopycatRenderer implements BlockRenderer {
     private Color resolveTintColor() {
         if (tintColor.a >= 0) return tintColor;
         if (materialBlockState == null) return tintColor.set(1f, 1f, 1f, 1f, true);
-        blockColorCalculator.getBlockColor(new MaterialStateBlock(block, materialBlockState), tintColor);
+        blockColorCalculator.getBlockColor(block, materialBlockState, tintColor);
         return tintColor;
     }
 
