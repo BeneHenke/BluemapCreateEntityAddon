@@ -8,7 +8,7 @@ import de.bluecolored.bluemap.core.map.hires.block.BlockRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
 import de.bluecolored.bluemap.core.map.hires.block.BlockStateModelRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.ResourceModelRenderer;
-import de.bluecolored.bluemap.core.resources.ResourcePath;
+import de.bluecolored.bluemap.core.resources.adapter.ResourcesGson;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variant;
 import de.bluecolored.bluemap.core.util.Key;
@@ -22,7 +22,9 @@ import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Positions;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.TrackEntity;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TrackRenderer implements BlockRenderer {
 
@@ -39,6 +41,13 @@ public class TrackRenderer implements BlockRenderer {
     private BlockNeighborhood block;
     private Variant variant;
     private TileModelView blockModel;
+
+    /**
+     * Variants this renderer owns, keyed by model-path. BlockRenderers are held in a ThreadLocal by
+     * bluemap, so this cache is confined to one render-thread - unlike the Variant handed to
+     * {@link #render}, which is parsed once into the resource-pack and shared by every thread.
+     */
+    private final Map<String, Variant> localVariants = new HashMap<>();
 
     public TrackRenderer(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings) {
         this.resourcePack = resourcePack;
@@ -60,18 +69,25 @@ public class TrackRenderer implements BlockRenderer {
         boolean isXModel = modelPath.contains("x_ortho");
         boolean isZModel = modelPath.contains("z_ortho");
 
-        //reset variant orientation to combine models
-        variant.getTransformMatrix().identity();
+        // Everything that isn't a plain straight is an .obj model bluemap cannot render, so it gets
+        // built out of two x_ortho pieces instead and shaped by the transforms further down.
+        String renderModelPath = modelPath;
         if (!(isXModel || isZModel)) {
             int lastSlash = modelPath.lastIndexOf('/');
             String path = (lastSlash != -1) ? modelPath.substring(0, lastSlash) : modelPath;
-            variant.getModel().setResource(resourcePack.getModel(new ResourcePath<>( path + "/x_ortho")));
-            modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
-            blockModel.translate(0.5f, 0, 0);
+            renderModelPath = path + "/x_ortho";
             isXModel = true;
         }
 
-        modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
+        // rendered through a variant we own: the shared one must not be mutated (see localVariants)
+        Variant renderVariant = localVariant(renderModelPath);
+
+        if (!renderModelPath.equals(modelPath)) {
+            modelRenderer.render(block, renderVariant, blockModel.initialize(), blockColor);
+            blockModel.translate(0.5f, 0, 0);
+        }
+
+        modelRenderer.render(block, renderVariant, blockModel.initialize(), blockColor);
         blockModel.initialize(modelStart);
 
         if (modelPath.endsWith("diag")) {
@@ -102,7 +118,6 @@ public class TrackRenderer implements BlockRenderer {
             blockModel.transform(matrix);
             blockModel.transform(modelMatrix);
         }
-        copyMatrix(modelMatrix, variant.getTransformMatrix());
 
         if (!(block.getBlockEntity() instanceof TrackEntity entity)) return;
         if (entity.getConnections().isEmpty()) return;
@@ -141,12 +156,11 @@ public class TrackRenderer implements BlockRenderer {
                         connectionBlock, resourcePack, renderSettings, block.getDimensionType()
                 );
                 connBlockNeighbour.set(connectionBlock.getX(), connectionBlock.getY(), connectionBlock.getZ());
-                variant.getTransformMatrix().identity();
-                modelRenderer.render(connBlockNeighbour, variant, blockModel, new Color());
-                copyMatrix(modelMatrix, variant.getTransformMatrix());
+                modelRenderer.render(connBlockNeighbour, renderVariant, blockModel, new Color());
 
-                float pitchDiff = segmentT.pitch();
-                float rollDiff = segmentT.roll();
+                // the model's local pitch/roll axes are swapped relative to the curve frame
+                float pitchDiff = segmentT.roll();
+                float rollDiff = segmentT.pitch();
                 float yawDiff = segmentT.yaw();
 
                 if (isXModel) {
@@ -212,6 +226,11 @@ public class TrackRenderer implements BlockRenderer {
                 blockModel.transform(matrix);
             }
         }
+    }
+
+    private Variant localVariant(String modelPath) {
+        return localVariants.computeIfAbsent(modelPath, path ->
+                ResourcesGson.INSTANCE.fromJson("{\"model\":\"" + path + "\"}", Variant.class));
     }
 
     boolean shouldRender(Vector3d v) {
@@ -499,6 +518,6 @@ public class TrackRenderer implements BlockRenderer {
         float y = Math.abs((float) axis.getY());
         float z = Math.abs((float) axis.getZ());
 
-        return (y != 0) && ((y - x < 0.01) || (y - z < 0.01));
+        return (y != 0) && ((Math.abs(y - x) < 0.01) || (Math.abs(y - z) < 0.01));
     }
 }

@@ -172,7 +172,7 @@ public class CopycatRenderer implements BlockRenderer {
         int start = model.getStart();
         for (Direction dir : Direction.values()) {
             VectorM3f[] faceCorners = getFaceCorners(corners, dir);
-            face(element, dir, faceCorners[0], faceCorners[1], faceCorners[2], faceCorners[3], copiedModel, materialProperties);
+            face(element, dir, faceCorners[0], faceCorners[1], faceCorners[2], faceCorners[3], copiedModel, materialProperties, facing);
         }
 
         model.initialize(start);
@@ -269,7 +269,8 @@ public class CopycatRenderer implements BlockRenderer {
             VectorM3f c2,
             VectorM3f c3,
             Model copiedModel,
-            Map<String, String> materialProperties) {
+            Map<String, String> materialProperties,
+            Direction blockFacing) {
         Face face = element.getFaces().get(dir);
         if (face == null) return;
 
@@ -292,8 +293,22 @@ public class CopycatRenderer implements BlockRenderer {
         VectorM3f vecC0C3 = new VectorM3f(c3.x - c0.x, c3.y - c0.y, c3.z - c0.z);
         float lengthC0C3 = Math.round(vecC0C3.length()*100)/100f;
 
-        float factorC0C3 = lengthC0C3 / 32;
-        float factorC0C1 = lengthC0C1 / 32;
+        // Each face is split into 4 patches that take their texture from the matching corner of the
+        // material's texture. The split does not have to sit in the middle: create builds its 3-thick
+        // panel from a 1px slice of the block's back and a 2px slice of its facing side, so an odd
+        // thickness is divided into whole pixels instead of 1.5/1.5.
+        float lowC0C1 = splitLowLength(lengthC0C1, vecC0C1, blockFacing);
+        float lowC0C3 = splitLowLength(lengthC0C3, vecC0C3, blockFacing);
+        float highC0C1 = lengthC0C1 - lowC0C1;
+        float highC0C3 = lengthC0C3 - lowC0C3;
+
+        // texture-space extent of each half (16 model-units span the whole texture)
+        float lowFactorC0C1 = lowC0C1 / 16f, highFactorC0C1 = highC0C1 / 16f;
+        float lowFactorC0C3 = lowC0C3 / 16f, highFactorC0C3 = highC0C3 / 16f;
+
+        // where the split sits along each edge, as a fraction of its length
+        float splitC0C1 = lengthC0C1 > 0 ? lowC0C1 / lengthC0C1 : 0.5f;
+        float splitC0C3 = lengthC0C3 > 0 ? lowC0C3 / lengthC0C3 : 0.5f;
 
         // ----- AO -----
         float ao0 = 1f, ao1 = 1f, ao2 = 1f, ao3 = 1f;
@@ -304,39 +319,48 @@ public class CopycatRenderer implements BlockRenderer {
             ao3 = testAo(c3, dir);
         }
 
-        VectorM3f c0c1 = new VectorM3f((c0.x + c1.x)/2f, (c0.y + c1.y)/2f, (c0.z + c1.z)/2f);
-        VectorM3f c0c3 = new VectorM3f((c0.x + c3.x)/2f, (c0.y + c3.y)/2f, (c0.z + c3.z)/2f);
-        VectorM3f c1c2 = new VectorM3f((c1.x + c2.x)/2f, (c1.y + c2.y)/2f, (c1.z + c2.z)/2f);
-        VectorM3f c2c3 = new VectorM3f((c2.x + c3.x)/2f, (c2.y + c3.y)/2f, (c2.z + c3.z)/2f);
+        // ao of the split-points, interpolated at the same fractions the geometry is split at
+        float aoC0C1 = lerp(ao0, ao1, splitC0C1);
+        float aoC0C3 = lerp(ao0, ao3, splitC0C3);
+        float aoC1C2 = lerp(ao1, ao2, splitC0C3);
+        float aoC2C3 = lerp(ao3, ao2, splitC0C1);
+        float aoCenter = lerp(aoC0C1, aoC2C3, splitC0C3);
+
+        VectorM3f c0c1 = lerpPoint(c0, c1, splitC0C1);
+        VectorM3f c0c3 = lerpPoint(c0, c3, splitC0C3);
+        VectorM3f c1c2 = lerpPoint(c1, c2, splitC0C3);
+        VectorM3f c2c3 = lerpPoint(c3, c2, splitC0C1);
         VectorM3f center = new VectorM3f(
-                (c0.x + c1.x + c2.x + c3.x)/4f,
-                (c0.y + c1.y + c2.y + c3.y)/4f,
-                (c0.z + c1.z + c2.z + c3.z)/4f
+                c0.x + splitC0C1 * vecC0C1.x + splitC0C3 * vecC0C3.x,
+                c0.y + splitC0C1 * vecC0C1.y + splitC0C3 * vecC0C3.y,
+                c0.z + splitC0C1 * vecC0C1.z + splitC0C3 * vecC0C3.z
         );
 
+        // uvTL/TR/BL/BR belong to the patches at c1 / c0 / c2 / c3 respectively, so each one uses the
+        // half-extents of the edges that meet in its own corner.
         VectorM2f[] uvTL = new VectorM2f[]{
                 new VectorM2f(0, 0),
-                new VectorM2f(factorC0C1, 0),
-                new VectorM2f(factorC0C1, factorC0C3),
-                new VectorM2f(0, factorC0C3)};
+                new VectorM2f(highFactorC0C1, 0),
+                new VectorM2f(highFactorC0C1, lowFactorC0C3),
+                new VectorM2f(0, lowFactorC0C3)};
 
         VectorM2f[] uvTR = new VectorM2f[]{
-                new VectorM2f(1-factorC0C1, 0),
+                new VectorM2f(1-lowFactorC0C1, 0),
                 new VectorM2f(1, 0),
-                new VectorM2f(1, factorC0C3),
-                new VectorM2f(1-factorC0C1, factorC0C3)};
+                new VectorM2f(1, lowFactorC0C3),
+                new VectorM2f(1-lowFactorC0C1, lowFactorC0C3)};
 
         VectorM2f[] uvBL = new VectorM2f[]{
-                new VectorM2f(0, 1-factorC0C3),
-                new VectorM2f(factorC0C1, 1-factorC0C3),
-                new VectorM2f(factorC0C1, 1),
+                new VectorM2f(0, 1-highFactorC0C3),
+                new VectorM2f(highFactorC0C1, 1-highFactorC0C3),
+                new VectorM2f(highFactorC0C1, 1),
                 new VectorM2f(0, 1)};
 
         VectorM2f[] uvBR = new VectorM2f[]{
-                new VectorM2f(1-factorC0C1, 1-factorC0C3),
-                new VectorM2f(1, 1-factorC0C3),
+                new VectorM2f(1-lowFactorC0C1, 1-highFactorC0C3),
+                new VectorM2f(1, 1-highFactorC0C3),
                 new VectorM2f(1, 1),
-                new VectorM2f(1-factorC0C1, 1)};
+                new VectorM2f(1-lowFactorC0C1, 1)};
 
 
         int rotationSteps = Math.floorMod(
@@ -363,40 +387,63 @@ public class CopycatRenderer implements BlockRenderer {
         VectorM3f[] vertexTR = new VectorM3f[]{c0, c0c1, center, c0c3};
         emitQuad(
                 new VHelper(vertexTR[0], uvTR[1], ao0),
-                new VHelper(vertexTR[1], uvTR[0], lerp(ao0, ao1, 0.5f)),
-                new VHelper(vertexTR[2], uvTR[3], (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                new VHelper(vertexTR[3], uvTR[2], lerp(ao0, ao3, 0.5f)),
+                new VHelper(vertexTR[1], uvTR[0], aoC0C1),
+                new VHelper(vertexTR[2], uvTR[3], aoCenter),
+                new VHelper(vertexTR[3], uvTR[2], aoC0C3),
                 tex, sunLight, blockLight, tintR, tintG, tintB
         );
 
         // Top left
         VectorM3f[] vertexTL = new VectorM3f[]{c0c1, c1, c1c2, center};
         emitQuad(
-                new VHelper(vertexTL[0], uvTL[1], lerp(ao0, ao1, 0.5f)),
+                new VHelper(vertexTL[0], uvTL[1], aoC0C1),
                 new VHelper(vertexTL[1], uvTL[0], ao1),
-                new VHelper(vertexTL[2], uvTL[3], lerp(ao1, ao2, 0.5f)),
-                new VHelper(vertexTL[3], uvTL[2], (ao0 + ao1 + ao2 + ao3) * 0.25f),
+                new VHelper(vertexTL[2], uvTL[3], aoC1C2),
+                new VHelper(vertexTL[3], uvTL[2], aoCenter),
                 tex, sunLight, blockLight, tintR, tintG, tintB
         );
 
         // Bottom right
         VectorM3f[] vertexBR = new VectorM3f[]{c0c3, center, c2c3, c3};
         emitQuad(
-                new VHelper(vertexBR[0], uvBR[1], (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                new VHelper(vertexBR[1], uvBR[0], lerp(ao1, ao2, 0.5f)),
-                new VHelper(vertexBR[2], uvBR[3], ao2),
-                new VHelper(vertexBR[3], uvBR[2], lerp(ao2, ao3, 0.5f)),
+                new VHelper(vertexBR[0], uvBR[1], aoC0C3),
+                new VHelper(vertexBR[1], uvBR[0], aoCenter),
+                new VHelper(vertexBR[2], uvBR[3], aoC2C3),
+                new VHelper(vertexBR[3], uvBR[2], ao3),
                 tex, sunLight, blockLight, tintR, tintG, tintB
         );
 
         // Bottom left
         VectorM3f[] vertexBL = new VectorM3f[]{center, c1c2, c2, c2c3};
         emitQuad(
-                new VHelper(vertexBL[0], uvBL[1], lerp(ao0, ao3, 0.5f)),
-                new VHelper(vertexBL[1], uvBL[0], (ao0 + ao1 + ao2 + ao3) * 0.25f),
-                new VHelper(vertexBL[2], uvBL[3], lerp(ao2, ao3, 0.5f)),
-                new VHelper(vertexBL[3], uvBL[2], ao3),
+                new VHelper(vertexBL[0], uvBL[1], aoCenter),
+                new VHelper(vertexBL[1], uvBL[0], aoC1C2),
+                new VHelper(vertexBL[2], uvBL[3], ao2),
+                new VHelper(vertexBL[3], uvBL[2], aoC2C3),
                 tex, sunLight, blockLight, tintR, tintG, tintB
+        );
+    }
+
+    private float splitLowLength(float length, VectorM3f edge, Direction blockFacing) {
+        float half = length / 2f;
+        if (blockFacing == null) return half;
+
+        int pixels = Math.round(length);
+        if (Math.abs(length - pixels) > 1e-3f || pixels % 2 == 0) return half;
+
+        Vector3i normal = blockFacing.toVector();
+        float towardsFacing = edge.x * normal.getX() + edge.y * normal.getY() + edge.z * normal.getZ();
+        if (Math.abs(towardsFacing) < 1e-3f) return half; // edge runs across the facing, not along it
+
+        // walking c0 -> c3 towards the facing means the far end is the thick one, and vice versa
+        return towardsFacing > 0 ? pixels / 2 : pixels - pixels / 2;
+    }
+
+    private VectorM3f lerpPoint(VectorM3f a, VectorM3f b, float t) {
+        return new VectorM3f(
+                a.x + (b.x - a.x) * t,
+                a.y + (b.y - a.y) * t,
+                a.z + (b.z - a.z) * t
         );
     }
 
@@ -574,13 +621,24 @@ public class CopycatRenderer implements BlockRenderer {
         if (variant.isTransformed()) direction.rotateAndScale(variant.getTransformMatrix());
     }
 
+    /**
+     * Whether a coordinate sits on the block's lower (-1) or upper (1) edge, or inside it (0).
+     * Compared with a tolerance: the corners of a wall-mounted panel come out of a quaternion rotation
+     * as 15.999999 / 0.0000009, so an exact ==16 test would miss them and silently drop their occlusion.
+     */
+    private static int blockEdge(float coordinate) {
+        if (Math.abs(coordinate - 16f) < 1e-3f) return 1;
+        if (Math.abs(coordinate) < 1e-3f) return -1;
+        return 0;
+    }
+
     private float testAo(VectorM3f vertex, Direction dir) {
         Vector3i dirVec = dir.toVector();
         int occluding = 0;
 
-        int x = vertex.x == 16 ? 1 : vertex.x == 0 ? -1 : 0;
-        int y = vertex.y == 16 ? 1 : vertex.y == 0 ? -1 : 0;
-        int z = vertex.z == 16 ? 1 : vertex.z == 0 ? -1 : 0;
+        int x = blockEdge(vertex.x);
+        int y = blockEdge(vertex.y);
+        int z = blockEdge(vertex.z);
 
         if (x * dirVec.getX() + y * dirVec.getY() > 0) {
             if (getRotationRelativeBlock(x, y, 0).getProperties().isOccluding()) occluding++;
