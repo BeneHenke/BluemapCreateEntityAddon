@@ -10,7 +10,7 @@ import de.bluecolored.bluemap.core.map.hires.TileModel;
 import de.bluecolored.bluemap.core.map.hires.TileModelView;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
-import de.bluecolored.bluemap.core.resources.BlockColorCalculatorFactory;
+import de.bluecolored.bluemap.core.map.hires.block.color.BlockColorCalculator;
 import de.bluecolored.bluemap.core.resources.ResourcePath;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variant;
@@ -46,7 +46,7 @@ public class CopycatRenderer implements BlockRenderer {
 
     private final ResourcePack resourcePack;
     private final TextureGallery textureGallery;
-    private final BlockColorCalculatorFactory.BlockColorCalculator blockColorCalculator;
+    private final BlockColorCalculator blockColorCalculator;
     private final VectorM3f[] corners = new VectorM3f[8];
 
     private BlockNeighborhood block;
@@ -64,7 +64,7 @@ public class CopycatRenderer implements BlockRenderer {
     public CopycatRenderer(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings) {
         this.resourcePack = resourcePack;
         this.textureGallery = textureGallery;
-        this.blockColorCalculator = resourcePack.getColorCalculatorFactory().createCalculator();
+        this.blockColorCalculator = resourcePack.createBlockColorCalculator();
 
         for (int i = 0; i < corners.length; i++) corners[i] = new VectorM3f(0, 0, 0);
     }
