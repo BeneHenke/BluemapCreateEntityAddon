@@ -18,7 +18,6 @@ import eu.cronmoth.createentityaddon.rendering.copycats.entitymodel.CopycatBlock
 import eu.cronmoth.createentityaddon.rendering.copycats.CopycatRenderer;
 import eu.cronmoth.createentityaddon.rendering.contraptions.entitymodel.ContraptionEntity;
 import eu.cronmoth.createentityaddon.rendering.contraptions.ContraptionEntityRenderer;
-import eu.cronmoth.createentityaddon.rendering.tracks.TrackBlockType;
 import eu.cronmoth.createentityaddon.rendering.tracks.TrackRenderer;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.TrackEntity;
 
@@ -37,7 +36,7 @@ public class CreateEntityAddon implements Runnable {
         BlockRendererType.REGISTRY.register(CopycatRenderer.TYPE);
         BlockEntityType.REGISTRY.register(new CopycatBlockType.Impl(new Key("create", "copycat"), CopycatBlockEntity.class));
         BlockRendererType.REGISTRY.register(TrackRenderer.TYPE);
-        BlockEntityType.REGISTRY.register(new TrackBlockType.Impl(new Key("create", "track"), TrackEntity.class));
+        BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "track"), TrackEntity.class));
         BlockRendererType.REGISTRY.register(ChainConveyorRenderer.TYPE);
         BlockEntityType.REGISTRY.register(new ChainConveyorBlockType.Impl(new Key("create", "chain_conveyor"), ChainConveyorEntity.class));
 
