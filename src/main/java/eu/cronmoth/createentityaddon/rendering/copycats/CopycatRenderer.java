@@ -12,7 +12,6 @@ import de.bluecolored.bluemap.core.map.hires.block.BlockRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
 import de.bluecolored.bluemap.core.resources.BlockColorCalculatorFactory;
 import de.bluecolored.bluemap.core.resources.ResourcePath;
-import de.bluecolored.bluemap.core.resources.pack.ResourcePool;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variant;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variants;
@@ -36,7 +35,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Function;
 
 public class CopycatRenderer implements BlockRenderer {
 
@@ -49,7 +47,6 @@ public class CopycatRenderer implements BlockRenderer {
     private final ResourcePack resourcePack;
     private final TextureGallery textureGallery;
     private final BlockColorCalculatorFactory.BlockColorCalculator blockColorCalculator;
-    private final Function<ResourcePath<Model>, Model> modelProvider;
     private final VectorM3f[] corners = new VectorM3f[8];
 
     private BlockNeighborhood block;
@@ -68,7 +65,6 @@ public class CopycatRenderer implements BlockRenderer {
         this.resourcePack = resourcePack;
         this.textureGallery = textureGallery;
         this.blockColorCalculator = resourcePack.getColorCalculatorFactory().createCalculator();
-        this.modelProvider = resourcePack.getModels()::get;
 
         for (int i = 0; i < corners.length; i++) corners[i] = new VectorM3f(0, 0, 0);
     }
@@ -79,7 +75,7 @@ public class CopycatRenderer implements BlockRenderer {
         this.variant = variant;
         this.blockModel = blockModel;
         float blockColorOpacity = 0f;
-        this.modelResource = variant.getModel().getResource(modelProvider);
+        this.modelResource = variant.getModel().getResource(resourcePack.getModels()::get);
 
         if (!(block.getBlockEntity() instanceof CopycatBlockEntity entity)) return;
         if (modelResource == null) return;
@@ -124,8 +120,7 @@ public class CopycatRenderer implements BlockRenderer {
     private float resolveMaterialYRotation(BlockState materialState) {
         if (materialState.getProperties().isEmpty()) return 0f;
 
-        de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.BlockState resolvedState =
-                resourcePack.getBlockStates().get(materialState.getId());
+        de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.BlockState resolvedState = resourcePack.getBlockState(materialState);
         if (resolvedState == null) return 0f;
 
         Variants variants = resolvedState.getVariants();
@@ -257,12 +252,12 @@ public class CopycatRenderer implements BlockRenderer {
 
     private VectorM3f[] getFaceCorners(VectorM3f[] c, Direction dir) {
         return switch (dir) {
-            case DOWN -> new VectorM3f[]{c[2], c[1], c[0], c[3]};     // Boden: minY (von außen unten) 0 3 2 1
-            case UP -> new VectorM3f[]{c[7], c[4], c[5], c[6]};       // Decke: maxY (von außen oben) 5 6 7 4
-            case NORTH -> new VectorM3f[]{c[4], c[7], c[3], c[0]};    // Vorne: minZ (von außen, CW)
-            case SOUTH -> new VectorM3f[]{c[6], c[5], c[1], c[2]};    // Hinten: maxZ (von außen, CW)
-            case WEST -> new VectorM3f[]{c[5], c[4], c[0], c[1]};     // Links: minX (von außen, CW)
-            case EAST -> new VectorM3f[]{c[7], c[6], c[2], c[3]};     // Rechts: maxX (von außen, CW)
+            case DOWN -> new VectorM3f[]{c[2], c[1], c[0], c[3]};
+            case UP -> new VectorM3f[]{c[7], c[4], c[5], c[6]};
+            case NORTH -> new VectorM3f[]{c[4], c[7], c[3], c[0]};
+            case SOUTH -> new VectorM3f[]{c[6], c[5], c[1], c[2]};
+            case WEST -> new VectorM3f[]{c[5], c[4], c[0], c[1]};
+            case EAST -> new VectorM3f[]{c[7], c[6], c[2], c[3]};
         };
     }
 
@@ -274,7 +269,8 @@ public class CopycatRenderer implements BlockRenderer {
             VectorM3f c2,
             VectorM3f c3,
             Model copiedModel,
-            Map<String, String> materialProperties) {
+            Map<String, String> materialProperties,
+            Direction blockFacing) {
         Face face = element.getFaces().get(dir);
         if (face == null) return;
 
@@ -374,7 +370,6 @@ public class CopycatRenderer implements BlockRenderer {
         rotateUVs(uvTR, rotationSteps);
         rotateUVs(uvBL, rotationSteps);
         rotateUVs(uvBR, rotationSteps);
-//        System.out.println(uvTL[0]);
 
         int tex = textureGallery.get(face.getTexture().getTexturePath(copiedModel.getTextures()::get));
 
@@ -463,7 +458,9 @@ public class CopycatRenderer implements BlockRenderer {
                     case UP -> Direction.NORTH;
                     case DOWN -> Direction.SOUTH;
                 };
-                case DOWN -> switch (face) {
+            }
+            if (facing == Direction.DOWN) {
+                return switch (face) {
                     case NORTH -> Direction.UP;
                     case EAST -> Direction.EAST;
                     case SOUTH -> Direction.DOWN;

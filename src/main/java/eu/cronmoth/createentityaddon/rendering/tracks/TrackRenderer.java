@@ -75,9 +75,7 @@ public class TrackRenderer implements BlockRenderer {
         if (!(isXModel || isZModel)) {
             int lastSlash = modelPath.lastIndexOf('/');
             String path = (lastSlash != -1) ? modelPath.substring(0, lastSlash) : modelPath;
-            variant.getModel().setResource(resourcePack.getModel(new ResourcePath<>( path + "/x_ortho")));
-            modelRenderer.render(block, variant, blockModel.initialize(), blockColor);
-            blockModel.translate(0.5f, 0, 0);
+            renderModelPath = path + "/x_ortho";
             isXModel = true;
         }
 
@@ -107,7 +105,7 @@ public class TrackRenderer implements BlockRenderer {
                     .identity()
                     .translate(-0.25f, 0, 0)
                     .translate(-0.5f, -0.5f, -0.5f)
-                    .rotateYXZ( 0, 45f, 0)
+                    .rotateYXZ(0, 45f, 0)
                     .translate(0.5f, 0.5f, 0.5f);
             blockModel.transform(matrix);
         } else if (modelPath.endsWith("ascending")) {
@@ -115,7 +113,7 @@ public class TrackRenderer implements BlockRenderer {
             matrix.identity()
                     .translate(-0.25f, 0, 0)
                     .translate(-0.5f, -0.5f, -0.5f)
-                    .rotateYXZ( 0, 90, -45f)
+                    .rotateYXZ(0, 90, -45)
                     .translate(0.5f, 1f, 0.5f);
             blockModel.transform(matrix);
             blockModel.transform(modelMatrix);
