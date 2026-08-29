@@ -5,9 +5,9 @@ Contraptions:
 
 Tracks:
 <img width="2560" height="1271" alt="tracks" src="https://github.com/user-attachments/assets/577ae851-230b-4f3d-a89b-4fde2788c25c" />
+Copycats:
+<img width="2560" height="1253" alt="copycat" src="https://github.com/user-attachments/assets/53551f9d-9f6e-43ed-94d5-862fceae9beb" />
 
 Together with the API:
 <img width="2559" height="1270" alt="train_comp" src="https://github.com/user-attachments/assets/683094cb-5093-4e8f-871d-1c51e30c8d41" />
 <img width="2550" height="1260" alt="train_lines" src="https://github.com/user-attachments/assets/42f8f3c6-a21e-4405-b947-7ae6720e6e50" />
-
-Copycats still have issues.
