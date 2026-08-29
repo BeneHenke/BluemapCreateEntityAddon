@@ -4,7 +4,7 @@ import com.flowpowered.math.vector.Vector3d;
 
 public record SegmentTransform(
         Vector3d position,
-        float roll,
         float pitch,
+        float roll,
         float yaw
 ) {}
