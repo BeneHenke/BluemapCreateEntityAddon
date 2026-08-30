@@ -120,7 +120,8 @@ public class CopycatRenderer implements BlockRenderer {
     private float resolveMaterialYRotation(BlockState materialState) {
         if (materialState.getProperties().isEmpty()) return 0f;
 
-        de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.BlockState resolvedState = resourcePack.getBlockState(materialState);
+        de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.BlockState resolvedState =
+                resourcePack.getBlockStates().get(materialState.getId());
         if (resolvedState == null) return 0f;
 
         Variants variants = resolvedState.getVariants();

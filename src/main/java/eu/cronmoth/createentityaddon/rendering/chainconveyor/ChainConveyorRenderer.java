@@ -84,7 +84,7 @@ public class ChainConveyorRenderer implements BlockRenderer {
             MatrixM4f portMatrix = new MatrixM4f();
             portMatrix.identity()
                     .translate(-0.5f, -0.5f, -0.5f)
-                    .rotateYXZ(0, rotation[1], 0)
+                    .rotate(0, rotation[1], 0)
                     .translate(0.5f, 0.5f, 0.5f);
             blockModel.transform(portMatrix);
             blockModel.initialize();
@@ -97,7 +97,7 @@ public class ChainConveyorRenderer implements BlockRenderer {
                 MatrixM4f matrix = new MatrixM4f();
                 matrix.identity()
                         .translate(-0.5f, -0.5f, -0.5f)
-                        .rotateYXZ(rotation[0], rotation[1], rotation[2])
+                        .rotate(rotation[0], rotation[1], rotation[2])
                         .translate(0.5f, 0.5f, 0.5f)
                         .translate(
                                 linePoint.x + leftOffset.x,
