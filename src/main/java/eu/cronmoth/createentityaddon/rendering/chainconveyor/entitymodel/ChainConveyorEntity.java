@@ -2,24 +2,18 @@ package eu.cronmoth.createentityaddon.rendering.chainconveyor.entitymodel;
 
 import de.bluecolored.bluemap.core.world.mca.blockentity.MCABlockEntity;
 import de.bluecolored.bluenbt.NBTName;
-import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Connection;
+import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Positions;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
 
-//@EqualsAndHashCode(callSuper = true)
-//@Data
+@Getter
+@Setter
 public class ChainConveyorEntity extends MCABlockEntity
 {
-    private @NBTName("Connections") List<int[]> connections = new ArrayList<>();
+    private @NBTName("Connections") List<Positions> connections = new ArrayList<>();
 
-    public void setConnections(List<int[]> connections) {
-        this.connections = connections;
-    }
-
-    public List<int[]> getConnections() {
-        return connections;
-    }
 }
