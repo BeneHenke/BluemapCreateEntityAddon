@@ -22,9 +22,9 @@ import eu.cronmoth.createentityaddon.rendering.chainconveyor.entitymodel.ChainCo
 import eu.cronmoth.createentityaddon.rendering.tracks.ObjMesh;
 import eu.cronmoth.createentityaddon.rendering.tracks.ObjMeshRenderer;
 import eu.cronmoth.createentityaddon.rendering.tracks.TrackMeshExtension;
-import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Positions;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -64,14 +64,27 @@ public class ChainConveyorRenderer implements BlockRenderer {
         emit(ext.mesh(WHEEL), new MatrixM4f().identity(), tileModel, light, tex(WHEEL));
         emit(ext.mesh(SHAFT), new MatrixM4f().identity(), tileModel, light, tex(SHAFT));
 
-        if (!(block.getBlockEntity() instanceof ChainConveyorEntity entity)) return;
+        boolean debug = Boolean.getBoolean("cea.trackdebug");
+
+        if (!(block.getBlockEntity() instanceof ChainConveyorEntity entity)) {
+            if (debug) de.bluecolored.bluemap.core.logger.Logger.global.logInfo(
+                    "[cea] chain_conveyor " + block.getX() + "," + block.getY() + "," + block.getZ()
+                    + " - blockEntity is " + block.getBlockEntity());
+            return;
+        }
+        if (debug) de.bluecolored.bluemap.core.logger.Logger.global.logInfo(
+                "[cea] chain_conveyor " + block.getX() + "," + block.getY() + "," + block.getZ()
+                + " - " + entity.getConnections().size() + " connections: "
+                + Arrays.deepToString(entity.getConnections().toArray())
+                + " | chain model = " + resourcePack.getModels().get(new ResourcePath<>("minecraft", "block/chain")));
         if (entity.getConnections().isEmpty()) return;
 
         ObjMesh ports = ext.mesh(PORTS);
         int[] portsTex = tex(PORTS);
 
-        for (Positions c : entity.getConnections()) {
-            VectorM3f direction = new VectorM3f(c.getX(), c.getY(), c.getZ());
+        for (int[] c : entity.getConnections()) {
+            if (c == null || c.length < 3) continue;
+            VectorM3f direction = new VectorM3f(c[0], c[1], c[2]);
             VectorM3f horizontal = horizontalDirection(direction);
 
             VectorM3f start = new VectorM3f(horizontal.x, 0, horizontal.z);

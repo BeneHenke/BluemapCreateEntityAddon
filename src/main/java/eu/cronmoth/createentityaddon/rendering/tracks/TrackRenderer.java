@@ -74,6 +74,8 @@ public class TrackRenderer implements BlockRenderer {
      * top face - handled in {@link ObjMeshRenderer#emit}.
      */
     private static final float CURVE_AO = 0.7f;
+    /** {@code -Dcea.trackdebug=true} logs every bezier connection and why it was or wasn't drawn. */
+    private static final boolean TRACK_DEBUG = Boolean.getBoolean("cea.trackdebug");
 
     private final ResourceModelRenderer modelRenderer;
     private final ResourcePack resourcePack;
@@ -150,7 +152,14 @@ public class TrackRenderer implements BlockRenderer {
             List<Normals> axes = c.getAxis();
             List<Normals> normals = c.getNormal();
             if (pos == null || pos.size() < 2 || axes == null || axes.size() < 2
-                    || normals == null || normals.size() < 2) continue;
+                    || normals == null || normals.size() < 2) {
+                if (TRACK_DEBUG) de.bluecolored.bluemap.core.logger.Logger.global.logInfo(
+                        "[cea] track " + block.getX() + "," + block.getY() + "," + block.getZ()
+                        + " connection skipped - bad nbt: pos=" + (pos == null ? "null" : pos.size())
+                        + " axes=" + (axes == null ? "null" : axes.size())
+                        + " normals=" + (normals == null ? "null" : normals.size()));
+                continue;
+            }
 
             Vector3d dir = new Vector3d(pos.getLast().getX(), pos.getLast().getY(), pos.getLast().getZ());
             if (!shouldRender(dir)) continue;
@@ -166,6 +175,12 @@ public class TrackRenderer implements BlockRenderer {
             if (isAscending(neighborShape(dir))) end2 = end2.sub(new Vector3d(0, ASCENDING_END_DROP, 0));
 
             Sample[] samples = sampleCurve(end1, end2, axis1, axis2, faceNormal1, faceNormal2);
+            if (TRACK_DEBUG) de.bluecolored.bluemap.core.logger.Logger.global.logInfo(
+                    "[cea] track " + block.getX() + "," + block.getY() + "," + block.getZ()
+                    + " -> " + pos.getLast().getX() + "," + pos.getLast().getY() + "," + pos.getLast().getZ()
+                    + " mat=" + c.getMaterial()
+                    + " end1=" + end1 + " end2=" + end2 + " axis1=" + axis1 + " axis2=" + axis2
+                    + " -> " + (samples == null ? "NULL (curve dropped)" : samples.length + " samples"));
             if (samples == null) continue;
 
             String material = c.getMaterial();
