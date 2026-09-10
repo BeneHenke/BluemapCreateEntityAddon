@@ -77,76 +77,100 @@
       "renderer": "create:track"
     },
     "shape=cr_d,turn=false,waterlogged=false": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_diag"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_diag",
+      "renderer": "create:track"
     },
     "shape=cr_d,turn=false,waterlogged=true": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_diag"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_diag",
+      "renderer": "create:track"
     },
     "shape=cr_d,turn=true,waterlogged=false": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_diag"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_diag",
+      "renderer": "create:track"
     },
     "shape=cr_d,turn=true,waterlogged=true": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_diag"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_diag",
+      "renderer": "create:track"
     },
     "shape=cr_ndx,turn=false,waterlogged=false": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_xo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_xo",
+      "renderer": "create:track"
     },
     "shape=cr_ndx,turn=false,waterlogged=true": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_xo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_xo",
+      "renderer": "create:track"
     },
     "shape=cr_ndx,turn=true,waterlogged=false": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_xo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_xo",
+      "renderer": "create:track"
     },
     "shape=cr_ndx,turn=true,waterlogged=true": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_xo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_xo",
+      "renderer": "create:track"
     },
     "shape=cr_ndz,turn=false,waterlogged=false": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_zo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_zo",
+      "renderer": "create:track"
     },
     "shape=cr_ndz,turn=false,waterlogged=true": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_zo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_zo",
+      "renderer": "create:track"
     },
     "shape=cr_ndz,turn=true,waterlogged=false": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_zo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_zo",
+      "renderer": "create:track"
     },
     "shape=cr_ndz,turn=true,waterlogged=true": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_zo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d2_zo",
+      "renderer": "create:track"
     },
     "shape=cr_o,turn=false,waterlogged=false": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_ortho"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_ortho",
+      "renderer": "create:track"
     },
     "shape=cr_o,turn=false,waterlogged=true": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_ortho"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_ortho",
+      "renderer": "create:track"
     },
     "shape=cr_o,turn=true,waterlogged=false": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_ortho"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_ortho",
+      "renderer": "create:track"
     },
     "shape=cr_o,turn=true,waterlogged=true": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_ortho"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_ortho",
+      "renderer": "create:track"
     },
     "shape=cr_pdx,turn=false,waterlogged=false": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_xo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_xo",
+      "renderer": "create:track"
     },
     "shape=cr_pdx,turn=false,waterlogged=true": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_xo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_xo",
+      "renderer": "create:track"
     },
     "shape=cr_pdx,turn=true,waterlogged=false": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_xo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_xo",
+      "renderer": "create:track"
     },
     "shape=cr_pdx,turn=true,waterlogged=true": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_xo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_xo",
+      "renderer": "create:track"
     },
     "shape=cr_pdz,turn=false,waterlogged=false": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_zo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_zo",
+      "renderer": "create:track"
     },
     "shape=cr_pdz,turn=false,waterlogged=true": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_zo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_zo",
+      "renderer": "create:track"
     },
     "shape=cr_pdz,turn=true,waterlogged=false": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_zo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_zo",
+      "renderer": "create:track"
     },
     "shape=cr_pdz,turn=true,waterlogged=true": {
-      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_zo"
+      "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/cross_d1_zo",
+      "renderer": "create:track"
     },
     "shape=nd,turn=false,waterlogged=false": {
       "model": "railways:block/track/compat/twilightforest/twilight_oak_wide/diag_2",

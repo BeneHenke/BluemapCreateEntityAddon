@@ -1,9 +1,0 @@
-{
-  "multipart": [
-    {
-      "apply": {
-        "model": "create:block/chain_conveyor/ports"
-      }
-    }
-  ]
-}

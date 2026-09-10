@@ -12,6 +12,8 @@ public class Connection {
     private @NBTName("Normals") List<Normals> normal;
     private @NBTName("Primary") boolean primary;
     private @NBTName("Positions") List<Positions> pos;
+    /** Precise curve endpoints (create's {@code BezierConnection.starts}), block-relative. */
+    private @NBTName("Starts") List<Normals> starts;
     private @NBTName("Axes") List<Normals> axis;
     private @NBTName("Material") String material;
 
