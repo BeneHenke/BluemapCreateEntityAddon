@@ -7,6 +7,8 @@ import de.bluecolored.bluemap.core.util.Key;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -84,38 +86,54 @@ public class TrackMeshExtension implements ResourcePackExtension {
 
     @Override
     public void loadResources(Iterable<Path> roots) throws IOException {
-        // bluemap 5.13+ hands the extension every pack root at once (was one call per root)
-        for (Map.Entry<String, String> e : WANTED.entrySet()) {
-            for (Path root : roots) {
-                if (meshes.containsKey(e.getKey())) break; // first pack that has it wins
-                Path file = root.resolve(e.getValue());
-                if (!Files.isRegularFile(file)) continue;
-                try {
-                    Map<String, Integer> numericMtl = readNumericMtl(file);
-                    Map<String, Integer> nameToSlot;
-                    String[] slots = null;
+        // bluemap 5.13+ hands the extension every pack root at once (was one call per mounted
+        // root) - and the roots here are raw (a mod .jar, a pack dir), not mounted, so open them.
+        for (Path root : roots) scanRoot(root);
+    }
 
-                    if (!numericMtl.isEmpty()) {
-                        nameToSlot = numericMtl;                       // create track meshes: #0/#1/#2
-                    } else {
-                        // named-texture mtl (chain conveyor): assign a slot per distinct texture key
-                        Map<String, String> keys = readTextureKeyMtl(file);
-                        LinkedHashMap<String, Integer> keySlot = new LinkedHashMap<>();
-                        nameToSlot = new HashMap<>();
-                        keys.forEach((mat, key) ->
-                                nameToSlot.put(mat, keySlot.computeIfAbsent(key, k -> keySlot.size())));
-                        slots = keySlot.keySet().toArray(new String[0]);
-                    }
-
-                    try (InputStream in = Files.newInputStream(file)) {
-                        meshes.put(e.getKey(), ObjMesh.parse(in, nameToSlot));
-                    }
-                    if (slots != null) slotKeys.put(e.getKey(), slots);
-                    Logger.global.logInfo("[createentityaddon] mesh '" + e.getKey() + "' from " + e.getValue());
-                } catch (RuntimeException ex) {
-                    Logger.global.logWarning("[createentityaddon] failed parsing " + e.getValue() + ": " + ex.getMessage());
-                }
+    private void scanRoot(Path root) {
+        if (!Files.isDirectory(root)) {
+            // a .jar / .zip pack: mount it and scan its filesystem roots
+            try (FileSystem fs = FileSystems.newFileSystem(root, (ClassLoader) null)) {
+                for (Path fsRoot : fs.getRootDirectories()) scanRoot(fsRoot);
+            } catch (IOException | RuntimeException ex) {
+                Logger.global.logDebug("[createentityaddon] could not open pack " + root + ": " + ex);
             }
+            return;
+        }
+        for (Map.Entry<String, String> e : WANTED.entrySet()) {
+            if (meshes.containsKey(e.getKey())) continue; // first pack that has it wins
+            Path file = root.resolve(e.getValue());
+            if (!Files.isRegularFile(file)) continue;
+            loadMesh(e.getKey(), e.getValue(), file);
+        }
+    }
+
+    private void loadMesh(String meshKey, String assetPath, Path file) {
+        try {
+            Map<String, Integer> numericMtl = readNumericMtl(file);
+            Map<String, Integer> nameToSlot;
+            String[] slots = null;
+
+            if (!numericMtl.isEmpty()) {
+                nameToSlot = numericMtl;                       // create track meshes: #0/#1/#2
+            } else {
+                // named-texture mtl (chain conveyor): assign a slot per distinct texture key
+                Map<String, String> keys = readTextureKeyMtl(file);
+                LinkedHashMap<String, Integer> keySlot = new LinkedHashMap<>();
+                nameToSlot = new HashMap<>();
+                keys.forEach((mat, key) ->
+                        nameToSlot.put(mat, keySlot.computeIfAbsent(key, k -> keySlot.size())));
+                slots = keySlot.keySet().toArray(new String[0]);
+            }
+
+            try (InputStream in = Files.newInputStream(file)) {
+                meshes.put(meshKey, ObjMesh.parse(in, nameToSlot));
+            }
+            if (slots != null) slotKeys.put(meshKey, slots);
+            Logger.global.logInfo("[createentityaddon] mesh '" + meshKey + "' from " + assetPath);
+        } catch (IOException | RuntimeException ex) {
+            Logger.global.logWarning("[createentityaddon] failed parsing " + assetPath + ": " + ex.getMessage());
         }
     }
 
