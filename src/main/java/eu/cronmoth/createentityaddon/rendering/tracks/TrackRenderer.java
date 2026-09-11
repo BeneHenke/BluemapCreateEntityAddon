@@ -59,12 +59,7 @@ public class TrackRenderer implements BlockRenderer {
     private static final float CURVE_LIFT = 13f / 64f;
     /** monorail beam lift - its own value: {@code renderMonorailConnection} already lines up. */
     private static final float MONO_LIFT = 6f / 32f;
-    /**
-     * The ascending block model sits a touch lower than the flat track (it is tuned to meet the
-     * straight rail). A bezier that connects to it must aim its endpoint the same amount lower,
-     * otherwise the connecting pieces float above the ascending rail.
-     */
-    private static final double ASCENDING_END_DROP = 1 / 16.0;
+
     private static final java.util.Set<String> ASCENDING_SHAPES = java.util.Set.of("ae", "an", "as", "aw");
     /**
      * Ambient-occlusion for the tiled bezier pieces' side/bottom faces. Bluemap darkens the straight
@@ -170,9 +165,6 @@ public class TrackRenderer implements BlockRenderer {
             Vector3d axis2 = vec(axes.get(1)).normalize();
             Vector3d faceNormal1 = vec(normals.get(0)).normalize();
             Vector3d faceNormal2 = vec(normals.get(1)).normalize();
-
-            if (modelPath.endsWith("/ascending")) end1 = end1.sub(new Vector3d(0, ASCENDING_END_DROP, 0));
-            if (isAscending(neighborShape(dir))) end2 = end2.sub(new Vector3d(0, ASCENDING_END_DROP, 0));
 
             Sample[] samples = sampleCurve(end1, end2, axis1, axis2, faceNormal1, faceNormal2);
             if (TRACK_DEBUG) de.bluecolored.bluemap.core.logger.Logger.global.logInfo(
