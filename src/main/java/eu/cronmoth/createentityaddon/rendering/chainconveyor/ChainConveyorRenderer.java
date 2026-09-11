@@ -22,7 +22,6 @@ import eu.cronmoth.createentityaddon.rendering.chainconveyor.entitymodel.ChainCo
 import eu.cronmoth.createentityaddon.rendering.tracks.ObjMesh;
 import eu.cronmoth.createentityaddon.rendering.tracks.ObjMeshRenderer;
 import eu.cronmoth.createentityaddon.rendering.tracks.TrackMeshExtension;
-import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Positions;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,8 +69,9 @@ public class ChainConveyorRenderer implements BlockRenderer {
         ObjMesh ports = ext.mesh(PORTS);
         int[] portsTex = tex(PORTS);
 
-        for (Positions c : entity.getConnections()) {
-            VectorM3f direction = new VectorM3f(c.getX(), c.getY(), c.getZ());
+        for (int[] c : entity.getConnections()) {
+            if (c == null || c.length < 3) continue;
+            VectorM3f direction = new VectorM3f(c[0], c[1], c[2]);
             VectorM3f horizontal = horizontalDirection(direction);
 
             VectorM3f start = new VectorM3f(horizontal.x, 0, horizontal.z);
