@@ -1,7 +1,11 @@
 package eu.cronmoth.createentityaddon.rendering.tracks;
 
+import com.flowpowered.math.vector.Vector3d;
+import de.bluecolored.bluemap.core.map.hires.RenderSettings;
+import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.world.BlockEntity;
 import de.bluecolored.bluemap.core.world.BlockState;
+import de.bluecolored.bluemap.core.world.DimensionType;
 import de.bluecolored.bluemap.core.world.LightData;
 import de.bluecolored.bluemap.core.world.biome.Biome;
 import de.bluecolored.bluemap.core.world.block.BlockAccess;
@@ -55,7 +59,8 @@ public class ConnectionBlock implements BlockAccess {
     public LightData getLightData() {
         //return lightData;
 //        block.set(xOrigin, yOrigin, zOrigin);
-        return block.getLightData();
+        //return block.getLightData();
+        return new LightData(15, 0);
     }
 
     @Override
