@@ -13,6 +13,12 @@ TARGET_SUFFIXES = (
     "/ascending",
     "/diag",
     "/diag_2",
+    "/cross_ortho",
+    "/cross_diag",
+    "/cross_d1_xo",
+    "/cross_d1_zo",
+    "/cross_d2_xo",
+    "/cross_d2_zo",
 )
 
 OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
