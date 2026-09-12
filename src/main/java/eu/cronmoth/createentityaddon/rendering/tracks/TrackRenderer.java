@@ -521,14 +521,18 @@ public class TrackRenderer implements BlockRenderer {
     }
 
     private int[] sampleLight(Vector3d rel) {
+        int ax = block.getX() + (int) Math.floor(rel.getX());
+        int ay = block.getY() + (int) Math.floor(rel.getY() + 0.25);
+        int az = block.getZ() + (int) Math.floor(rel.getZ());
+
         ExtendedBlock access = block.copy();
-        access.set(
-                block.getX() + (int) Math.floor(rel.getX()),
-                block.getY() + (int) Math.floor(rel.getY() + 0.25),
-                block.getZ() + (int) Math.floor(rel.getZ()));
+        access.set(ax | 1, ay | 1, az | 1);
+        access.set(ax, ay, az);
         ConnectionBlock cb = new ConnectionBlock(access, block.getBlockState());
         BlockNeighborhood nb = new BlockNeighborhood(cb, resourcePack, renderSettings, block.getDimensionType());
-        nb.set(cb.getX(), cb.getY(), cb.getZ());
+        int cbx = cb.getX(), cby = cb.getY(), cbz = cb.getZ();
+        nb.set(cbx | 1, cby | 1, cbz | 1);
+        nb.set(cbx, cby, cbz);
         LightData light = nb.getLightData();
         return new int[]{light.getSkyLight(), light.getBlockLight()};
     }
