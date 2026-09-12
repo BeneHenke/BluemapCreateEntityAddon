@@ -144,18 +144,19 @@ public class TrackRenderer implements BlockRenderer {
                 blockModel.initialize();
 
                 ExtendedBlock access = block.copy();
-                access.set(
-                        block.getX() + (int) Math.round(segment.getX()),
-                        block.getY() + (int) Math.round(segment.getY() + 0.25), //vertical offset to prefer upper blocks lighting data
-                        block.getZ() + (int) Math.round(segment.getZ())
-                );
-
+                int ax = block.getX() + (int) Math.round(segment.getX());
+                int ay = block.getY() + (int) Math.round(segment.getY() + 0.25); //vertical offset to prefer upper blocks lighting data
+                int az = block.getZ() + (int) Math.round(segment.getZ());
+                access.set(ax | 1, ay | 1, az | 1);
+                access.set(ax, ay, az);
                 ConnectionBlock connectionBlock = new ConnectionBlock(access, block.getBlockState());
 
                 BlockNeighborhood connBlockNeighbour = new BlockNeighborhood(
                         connectionBlock, resourcePack, renderSettings, block.getDimensionType()
                 );
-                connBlockNeighbour.set(connectionBlock.getX(), connectionBlock.getY(), connectionBlock.getZ());
+                int cbx = connectionBlock.getX(), cby = connectionBlock.getY(), cbz = connectionBlock.getZ();
+                connBlockNeighbour.set(cbx | 1, cby | 1, cbz | 1);
+                connBlockNeighbour.set(cbx, cby, cbz);
                 modelRenderer.render(connBlockNeighbour, renderVariant, blockModel, new Color());
 
                 // the model's local pitch/roll axes are swapped relative to the curve frame
