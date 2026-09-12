@@ -18,6 +18,10 @@ import eu.cronmoth.createentityaddon.rendering.copycats.entitymodel.CopycatBlock
 import eu.cronmoth.createentityaddon.rendering.copycats.CopycatRenderer;
 import eu.cronmoth.createentityaddon.rendering.contraptions.entitymodel.ContraptionEntity;
 import eu.cronmoth.createentityaddon.rendering.contraptions.ContraptionEntityRenderer;
+import eu.cronmoth.createentityaddon.rendering.displayboard.DisplayBoardTextRenderer;
+import eu.cronmoth.createentityaddon.rendering.displayboard.entitymodel.DisplayBoardEntity;
+import eu.cronmoth.createentityaddon.rendering.text.FontAtlasExtension;
+import eu.cronmoth.createentityaddon.rendering.text.LangExtension;
 import eu.cronmoth.createentityaddon.rendering.tracks.TrackMeshExtension;
 import eu.cronmoth.createentityaddon.rendering.tracks.TrackRenderer;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.TrackEntity;
@@ -42,6 +46,11 @@ public class CreateEntityAddon implements Runnable {
         ResourcePackExtensionType.REGISTRY.register(TrackMeshExtension.TYPE);
         BlockRendererType.REGISTRY.register(ChainConveyorRenderer.TYPE);
         BlockEntityType.REGISTRY.register(new ChainConveyorBlockType.Impl(new Key("create", "chain_conveyor"), ChainConveyorEntity.class));
+        //Display Board
+        ResourcePackExtensionType.REGISTRY.register(FontAtlasExtension.TYPE);
+        ResourcePackExtensionType.REGISTRY.register(LangExtension.TYPE);
+        BlockRendererType.REGISTRY.register(DisplayBoardTextRenderer.TYPE);
+        BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "flap_display"), DisplayBoardEntity.class));
 
     }
 
