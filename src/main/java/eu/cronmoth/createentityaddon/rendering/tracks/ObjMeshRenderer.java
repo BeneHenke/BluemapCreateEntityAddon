@@ -29,6 +29,11 @@ public final class ObjMeshRenderer {
      *               triangles keep AO {@code 1} - a block's top face isn't occluded either.
      */
     public static void emit(TileModelView view, ObjMesh mesh, MatrixM4f pose, int[] light, int[] tex, float sideAo) {
+        emit(view, mesh, pose, light, tex, sideAo, 1f, 1f, 1f);
+    }
+
+    /** Same as {@link #emit(TileModelView, ObjMesh, MatrixM4f, int[], int[], float)}, tinted {@code (r,g,b)} - e.g. a sign's dye-colored text drawn from one white glyph atlas. */
+    public static void emit(TileModelView view, ObjMesh mesh, MatrixM4f pose, int[] light, int[] tex, float sideAo, float r, float g, float b) {
         int first = view.initialize().add(mesh.triangles);
         TileModel tm = view.getTileModel();
         for (int t = 0; t < mesh.triangles; t++) {
@@ -44,7 +49,7 @@ public final class ObjMeshRenderer {
                     mesh.uv[u + 2], mesh.uv[u + 3],
                     mesh.uv[u + 4], mesh.uv[u + 5]);
             tm.setMaterialIndex(f, tex[Math.min(mesh.mat[t], tex.length - 1)]);
-            tm.setColor(f, 1f, 1f, 1f);
+            tm.setColor(f, r, g, b);
 
             // (v1->v2) x (v1->v3), y component vs length - up-facing tris keep full AO
             float ax = mesh.pos[p + 3] - mesh.pos[p], ay = mesh.pos[p + 4] - mesh.pos[p + 1], az = mesh.pos[p + 5] - mesh.pos[p + 2];
