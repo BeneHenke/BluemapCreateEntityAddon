@@ -36,6 +36,7 @@ public class ConnectionBlock implements BlockAccess {
         this.x = x;
         this.y = y;
         this.z = z;
+        this.block.set(x, y, z);
     }
 
     @Override
@@ -44,6 +45,10 @@ public class ConnectionBlock implements BlockAccess {
         connectionBlock.x = x;
         connectionBlock.y = y;
         connectionBlock.z = z;
+
+        connectionBlock.xOrigin = xOrigin;
+        connectionBlock.yOrigin = yOrigin;
+        connectionBlock.zOrigin = zOrigin;
         return connectionBlock;
     }
 
@@ -57,8 +62,6 @@ public class ConnectionBlock implements BlockAccess {
 
     @Override
     public LightData getLightData() {
-        //return lightData;
-//        block.set(xOrigin, yOrigin, zOrigin);
         return block.getLightData();
     }
 
