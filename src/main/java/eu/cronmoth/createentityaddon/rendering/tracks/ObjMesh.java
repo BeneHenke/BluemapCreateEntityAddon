@@ -9,14 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Minimal Wavefront OBJ reader for the track pieces bluemap cannot load itself (the atomic tie /
- * rail segments tiled along a bezier, and the diag / diag_2 / ascending block models). Quads are
- * fan-triangulated; every triangle carries its three positions, three uvs and a material slot.
- *
- * <p>Create loads these with {@code flip_v: true}, so the V coordinate is flipped to match
- * bluemap's top-left texture origin.
- */
 public final class ObjMesh {
 
     /** 9 floats per triangle: x1,y1,z1, x2,y2,z2, x3,y3,z3. */
@@ -39,7 +31,7 @@ public final class ObjMesh {
      * geometry is assembled in code rather than read from an {@code .obj}, e.g. a bluemap-parsed
      * box model whose UVs need a texture-size correction bluemap 5.7 doesn't apply.
      */
-    static ObjMesh of(float[] pos, float[] uv, int[] mat) {
+    public static ObjMesh of(float[] pos, float[] uv, int[] mat) {
         return new ObjMesh(pos, uv, mat);
     }
 
