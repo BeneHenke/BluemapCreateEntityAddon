@@ -73,7 +73,6 @@ public class TrackRenderer implements BlockRenderer {
     private final ResourceModelRenderer modelRenderer;
     private final ResourcePack resourcePack;
     private final TextureGallery textureGallery;
-    private final RenderSettings renderSettings;
 
     private BlockNeighborhood block;
     private TileModelView blockModel;
@@ -97,7 +96,6 @@ public class TrackRenderer implements BlockRenderer {
     public TrackRenderer(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings) {
         this.resourcePack = resourcePack;
         this.textureGallery = textureGallery;
-        this.renderSettings = renderSettings;
         this.modelRenderer = new ResourceModelRenderer(resourcePack, textureGallery, renderSettings);
     }
 
@@ -449,22 +447,16 @@ public class TrackRenderer implements BlockRenderer {
      * one - which a curve, reaching that far along its bezier, would hit.
      */
     private int[] sampleLight(Vector3d rel) {
-        // 5.12's ExtendedBlock/BlockNeighborhood.getLightData() caches on the low bits of the last
-        // coordinates set and silently no-ops a set() that lands on the same cell modulo that cache
-        // - flipping the low bit first busts it before landing on the real target cell. Needed on
-        // both the copied block and the BlockNeighborhood wrapped around it (see "Fix 5.12 light
-        // data issue").
-        int ax = block.getX() + (int) Math.floor(rel.getX());
-        int ay = block.getY() + (int) Math.floor(rel.getY() + 0.25);
-        int az = block.getZ() + (int) Math.floor(rel.getZ());
-
-        ExtendedBlock access = block.copy();
-        access.set(ax, ay, az);
-        ConnectionBlock cb = new ConnectionBlock(access, block.getBlockState());
-        BlockNeighborhood nb = new BlockNeighborhood(cb, resourcePack, renderSettings, block.getDimensionType());
-        int cbx = cb.getX(), cby = cb.getY(), cbz = cb.getZ();
-        nb.set(cbx, cby, cbz);
-        LightData light = nb.getLightData();
+        ExtendedBlock probe = block.copy();
+        // copy() carries the coordinates on the inner block but leaves the ExtendedBlock itself
+        // reporting (0,0,0), and set() is a no-op on unchanged coordinates - so without syncing it
+        // first, a piece sitting in cell (0,0,0) would be handed the anchor block's light instead.
+        probe.set(block.getX(), block.getY(), block.getZ());
+        probe.set(
+                block.getX() + (int) Math.floor(rel.getX()),
+                block.getY() + (int) Math.floor(rel.getY() + 0.25),
+                block.getZ() + (int) Math.floor(rel.getZ()));
+        LightData light = probe.getLightData();
         return new int[]{light.getSkyLight(), light.getBlockLight()};
     }
 
