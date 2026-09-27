@@ -40,6 +40,7 @@ public class ContraptionEntityRenderer implements EntityRenderer {
         if (contraption.isTrain()) {
             contraption.setPos(new Vector3d(0, 0, 0));
         }
+        int modelStart = tileModel.getStart();
         Map<Vector3d, BlockAttribute> blocks = new HashMap<>();
         for (BlockAttribute nbtBlock : contraption.getContraption().getBlocks().getBlockList()) {
             long[] coords = unpackCoordinates(nbtBlock.getPosition());
@@ -64,6 +65,13 @@ public class ContraptionEntityRenderer implements EntityRenderer {
             Vector3d relativePos = nbtBlock.getRelativePosition();
             tileModel.translate((int)relativePos.getX(), (int)relativePos.getY(), (int)relativePos.getZ());
         }
+
+        tileModel.initialize(modelStart);
+        compensateEntityRotationHarness(tileModel);
+    }
+
+    private static void compensateEntityRotationHarness(TileModelView tileModel) {
+        tileModel.rotate(180f, 0f, 1f, 0f);
     }
 
     private long[] unpackCoordinates(long pos)
