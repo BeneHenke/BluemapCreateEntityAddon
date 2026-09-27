@@ -40,6 +40,7 @@ public class ContraptionEntityRenderer implements EntityRenderer {
         if (contraption.isTrain()) {
             contraption.setPos(new Vector3d(0, 0, 0));
         }
+        int modelStart = tileModel.getStart();
         Map<Vector3d, BlockAttribute> blocks = new HashMap<>();
         for (BlockAttribute nbtBlock : contraption.getContraption().getBlocks().getBlockList()) {
             long[] coords = unpackCoordinates(nbtBlock.getPosition());
@@ -63,6 +64,25 @@ public class ContraptionEntityRenderer implements EntityRenderer {
             Vector3d relativePos = nbtBlock.getRelativePosition();
             tileModel.translate((int)relativePos.getX(), (int)relativePos.getY(), (int)relativePos.getZ());
         }
+
+        tileModel.initialize(modelStart);
+        applyBearingRotation(contraption, tileModel);
+    }
+
+    private static void applyBearingRotation(ContraptionEntity contraption, TileModelView tileModel) {
+        float angle = contraption.getAngle();
+        String axis = contraption.getAxis();
+        if (angle == 0f || axis == null) return;
+
+        float ax = axis.equalsIgnoreCase("x") ? 1f : 0f;
+        float ay = axis.equalsIgnoreCase("y") ? 1f : 0f;
+        float az = axis.equalsIgnoreCase("z") ? 1f : 0f;
+        if (ax == 0f && ay == 0f && az == 0f) return;
+
+        tileModel
+                .translate(-0.5f, -0.5f, -0.5f)
+                .rotate(angle, ax, ay, az)
+                .translate(0.5f, 0.5f, 0.5f);
     }
 
     private long[] unpackCoordinates(long pos)
