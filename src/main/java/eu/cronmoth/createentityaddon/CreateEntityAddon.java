@@ -86,17 +86,4 @@ public class CreateEntityAddon implements Runnable {
         }
 
     }
-
-    private void deleteDirectory(File directoryToBeDeleted) {
-        if (directoryToBeDeleted == null || !directoryToBeDeleted.exists()) {
-            return;
-        }
-        File[] allContents = directoryToBeDeleted.listFiles();
-        if (allContents != null) {
-            for (File file : allContents) {
-                deleteDirectory(file);
-            }
-        }
-        directoryToBeDeleted.delete();
-    }
 }

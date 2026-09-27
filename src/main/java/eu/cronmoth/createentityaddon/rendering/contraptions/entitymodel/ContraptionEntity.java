@@ -21,6 +21,8 @@ public class ContraptionEntity implements Entity {
     private @NBTName("Rotation") Vector2f rotation;
     private @NBTName("Contraption") ContraptionAttribute contraption;
     private @NBTName("AssemblyDirection") String assemblyDirection;
+    private @NBTName("Axis") String axis;
+    private @NBTName("Angle") float angle;
     private Map<Vector3d, BlockAttribute> blocks;
     private boolean isTrain;
 }
