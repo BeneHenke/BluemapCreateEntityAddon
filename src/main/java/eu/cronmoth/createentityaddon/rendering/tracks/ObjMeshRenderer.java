@@ -12,21 +12,18 @@ public final class ObjMeshRenderer {
 
     private ObjMeshRenderer() {}
 
-    public static void emit(TileModelView view, ObjMesh mesh, MatrixM4f pose, int[] light, int[] tex) {
-        emit(view, mesh, pose, light, tex, 1f);
-    }
-
     /**
      * Appends {@code mesh} to {@code view} and applies {@code pose} to just the appended triangles.
      *
      * @param light  {@code [skyLight, blockLight]}
      * @param tex    texture-gallery ids indexed by the mesh's per-triangle material slot
      *               ({@code mesh.mat}); clamped to the array's last entry
-     * @param sideAo AO for non-up-facing triangles ({@code 1} = none). SnR's per-wood track models
-     *               default to {@code ambientocclusion:true} (the parent's {@code false} isn't
-     *               inherited), so bluemap darkens their side/bottom faces near the ground; the
-     *               tiled bezier pieces get AO {@code 1} otherwise and read brighter. Up-facing
-     *               triangles keep AO {@code 1} - a block's top face isn't occluded either.
+     * @param sideAo AO for non-up-facing triangles ({@code 1} = none), to match the darkening
+     *               bluemap applies to the box-model blocks beside them. Note that a model's
+     *               {@code ambientocclusion} is not inherited from its parent, so SnR's per-wood
+     *               track models keep the default {@code true} where create's own set
+     *               {@code false}. Up-facing triangles keep AO {@code 1} - a block's top face
+     *               isn't occluded either.
      */
     public static void emit(TileModelView view, ObjMesh mesh, MatrixM4f pose, int[] light, int[] tex, float sideAo) {
         emit(view, mesh, pose, light, tex, sideAo, 1f, 1f, 1f);

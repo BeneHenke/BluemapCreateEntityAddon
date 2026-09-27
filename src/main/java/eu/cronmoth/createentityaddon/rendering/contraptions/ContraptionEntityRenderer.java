@@ -67,7 +67,24 @@ public class ContraptionEntityRenderer implements EntityRenderer {
         }
 
         tileModel.initialize(modelStart);
+        applyBearingRotation(contraption, tileModel);
         compensateEntityRotationHarness(tileModel);
+    }
+
+    private static void applyBearingRotation(ContraptionEntity contraption, TileModelView tileModel) {
+        float angle = contraption.getAngle();
+        String axis = contraption.getAxis();
+        if (angle == 0f || axis == null) return;
+
+        float ax = axis.equalsIgnoreCase("x") ? 1f : 0f;
+        float ay = axis.equalsIgnoreCase("y") ? 1f : 0f;
+        float az = axis.equalsIgnoreCase("z") ? 1f : 0f;
+        if (ax == 0f && ay == 0f && az == 0f) return;
+
+        tileModel
+                .translate(-0.5f, -0.5f, -0.5f)
+                .rotate(angle, ax, ay, az)
+                .translate(0.5f, 0.5f, 0.5f);
     }
 
     private static void compensateEntityRotationHarness(TileModelView tileModel) {
