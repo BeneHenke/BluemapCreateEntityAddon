@@ -120,9 +120,8 @@ public class ChainConveyorRenderer implements BlockRenderer {
     }
 
     /**
-     * AO for the OBJ pieces' side/bottom faces - bluemap darkens box-model block faces near the
-     * ground, the raw meshes get nothing, so they read brighter without this. Up-facing triangles
-     * keep full AO (handled in {@link ObjMeshRenderer#emit}).
+     * AO for the OBJ pieces' side/bottom faces, matching the darkening bluemap applies to box-model
+     * block faces near the ground. Up-facing triangles keep full AO (see {@link ObjMeshRenderer#emit}).
      */
     private static final float SIDE_AO = 0.7f;
 

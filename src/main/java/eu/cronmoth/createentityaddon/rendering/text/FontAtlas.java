@@ -169,9 +169,7 @@ public final class FontAtlas {
     private static void addQuad(List<Float> pos, List<Float> uv,
                                  float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3,
                                  float u0, float v0, float u1, float v1, float u2, float v2, float u3, float v3) {
-        // A,C,B / A,D,C winding - A->B->C gave a -Z normal (verified against the board's screen
-        // going dark instead of showing text - see DisplayBoardTextRenderer.SCREEN_Z's doc), the
-        // mesh is meant to face +Z
+        // A,C,B / A,D,C winding: the mesh has to face +Z, and A->B->C would give a -Z normal
         addTri(pos, uv, x0, y0, x2, y2, x1, y1, u0, v0, u2, v2, u1, v1);
         addTri(pos, uv, x0, y0, x3, y3, x2, y2, u0, v0, u3, v3, u2, v2);
     }

@@ -266,6 +266,11 @@ public class CopycatRenderer implements BlockRenderer {
         };
     }
 
+    /**
+     * Draws one face of a copycat element as four patches, each taking its texture from the matching
+     * corner of the copied block's own face - that is what makes a copycat look like a slice cut out
+     * of the material rather than a shrunk-down copy of it.
+     */
     private void face(
             Element element,
             Direction dir,
@@ -279,154 +284,180 @@ public class CopycatRenderer implements BlockRenderer {
         Face face = element.getFaces().get(dir);
         if (face == null) return;
 
-        String axis = materialProperties!=null ? materialProperties.get("axis"):null;
-        String facingStr = materialProperties!=null ? materialProperties.get("facing"):null;
-        Direction facing = facingStr!=null ? Direction.fromString(facingStr):null;
-        Optional<Face> mapped = Arrays.stream(copiedModel.getElements())
-                .filter(Objects::nonNull)
-                .map(e -> e.getFaces().get(resolveTextureDirection(axis, facing, dir)))
-                //.map(e -> e.getFaces().get(dir))
-                .filter(Objects::nonNull)
-                .findFirst();
-        if (mapped.isPresent()) face = mapped.get();
+        String axis = materialProperties != null ? materialProperties.get("axis") : null;
+        String facingStr = materialProperties != null ? materialProperties.get("facing") : null;
+        Direction facing = facingStr != null ? Direction.fromString(facingStr) : null;
+        face = copiedFace(face, copiedModel, resolveTextureDirection(axis, facing, dir));
 
-        // Vector from c0 to c1
-        VectorM3f vecC0C1 = new VectorM3f(c1.x - c0.x, c1.y - c0.y, c1.z - c0.z);
-        float lengthC0C1 = Math.round(vecC0C1.length()*100)/100f;
+        FaceSplit split = splitFace(c0, c1, c2, c3, blockFacing);
 
-        // Vector from c0 to c3
-        VectorM3f vecC0C3 = new VectorM3f(c3.x - c0.x, c3.y - c0.y, c3.z - c0.z);
-        float lengthC0C3 = Math.round(vecC0C3.length()*100)/100f;
-
-        // Each face is split into 4 patches that take their texture from the matching corner of the
-        // material's texture. The split does not have to sit in the middle: create builds its 3-thick
-        // panel from a 1px slice of the block's back and a 2px slice of its facing side, so an odd
-        // thickness is divided into whole pixels instead of 1.5/1.5.
-        float lowC0C1 = splitLowLength(lengthC0C1, vecC0C1, blockFacing);
-        float lowC0C3 = splitLowLength(lengthC0C3, vecC0C3, blockFacing);
-        float highC0C1 = lengthC0C1 - lowC0C1;
-        float highC0C3 = lengthC0C3 - lowC0C3;
-
-        // texture-space extent of each half (16 model-units span the whole texture)
-        float lowFactorC0C1 = lowC0C1 / 16f, highFactorC0C1 = highC0C1 / 16f;
-        float lowFactorC0C3 = lowC0C3 / 16f, highFactorC0C3 = highC0C3 / 16f;
-
-        // where the split sits along each edge, as a fraction of its length
-        float splitC0C1 = lengthC0C1 > 0 ? lowC0C1 / lengthC0C1 : 0.5f;
-        float splitC0C3 = lengthC0C3 > 0 ? lowC0C3 / lengthC0C3 : 0.5f;
-
-        // ----- AO -----
-        float ao0 = 1f, ao1 = 1f, ao2 = 1f, ao3 = 1f;
+        float[] ao = {1f, 1f, 1f, 1f};
         if (modelResource.isAmbientocclusion()) {
-            ao0 = testAo(c0, dir);
-            ao1 = testAo(c1, dir);
-            ao2 = testAo(c2, dir);
-            ao3 = testAo(c3, dir);
+            ao = new float[]{testAo(c0, dir), testAo(c1, dir), testAo(c2, dir), testAo(c3, dir)};
         }
-
-        // ao of the split-points, interpolated at the same fractions the geometry is split at
-        float aoC0C1 = lerp(ao0, ao1, splitC0C1);
-        float aoC0C3 = lerp(ao0, ao3, splitC0C3);
-        float aoC1C2 = lerp(ao1, ao2, splitC0C3);
-        float aoC2C3 = lerp(ao3, ao2, splitC0C1);
-        float aoCenter = lerp(aoC0C1, aoC2C3, splitC0C3);
-
-        VectorM3f c0c1 = lerpPoint(c0, c1, splitC0C1);
-        VectorM3f c0c3 = lerpPoint(c0, c3, splitC0C3);
-        VectorM3f c1c2 = lerpPoint(c1, c2, splitC0C3);
-        VectorM3f c2c3 = lerpPoint(c3, c2, splitC0C1);
-        VectorM3f center = new VectorM3f(
-                c0.x + splitC0C1 * vecC0C1.x + splitC0C3 * vecC0C3.x,
-                c0.y + splitC0C1 * vecC0C1.y + splitC0C3 * vecC0C3.y,
-                c0.z + splitC0C1 * vecC0C1.z + splitC0C3 * vecC0C3.z
-        );
-
-        // uvTL/TR/BL/BR belong to the patches at c1 / c0 / c2 / c3 respectively, so each one uses the
-        // half-extents of the edges that meet in its own corner.
-        VectorM2f[] uvTL = new VectorM2f[]{
-                new VectorM2f(0, 0),
-                new VectorM2f(highFactorC0C1, 0),
-                new VectorM2f(highFactorC0C1, lowFactorC0C3),
-                new VectorM2f(0, lowFactorC0C3)};
-
-        VectorM2f[] uvTR = new VectorM2f[]{
-                new VectorM2f(1-lowFactorC0C1, 0),
-                new VectorM2f(1, 0),
-                new VectorM2f(1, lowFactorC0C3),
-                new VectorM2f(1-lowFactorC0C1, lowFactorC0C3)};
-
-        VectorM2f[] uvBL = new VectorM2f[]{
-                new VectorM2f(0, 1-highFactorC0C3),
-                new VectorM2f(highFactorC0C1, 1-highFactorC0C3),
-                new VectorM2f(highFactorC0C1, 1),
-                new VectorM2f(0, 1)};
-
-        VectorM2f[] uvBR = new VectorM2f[]{
-                new VectorM2f(1-lowFactorC0C1, 1-highFactorC0C3),
-                new VectorM2f(1, 1-highFactorC0C3),
-                new VectorM2f(1, 1),
-                new VectorM2f(1-lowFactorC0C1, 1)};
-
 
         int rotationSteps = Math.floorMod(
                 -(Math.floorDiv(face.getRotation(), 90) + rotationStepsByAxisAndFacing(facing, axis, dir)),
                 4);
-        rotateUVs(uvTL, rotationSteps);
-        rotateUVs(uvTR, rotationSteps);
-        rotateUVs(uvBL, rotationSteps);
-        rotateUVs(uvBR, rotationSteps);
-
-        int tex = textureGallery.get(face.getTexture().getTexturePath(copiedModel.getTextures()::get));
 
         float tintR = 1f, tintG = 1f, tintB = 1f;
         if (face.getTintindex() >= 0) {
             Color tint = resolveTintColor();
             tintR = tint.r; tintG = tint.g; tintB = tint.b;
         }
-
         LightData light = block.getLightData();
-        int sunLight = light.getSkyLight();
-        int blockLight = light.getBlockLight();
+        Shading shading = new Shading(
+                textureGallery.get(face.getTexture().getTexturePath(copiedModel.getTextures()::get)),
+                light.getSkyLight(), light.getBlockLight(), tintR, tintG, tintB);
 
-        // Top right
-        VectorM3f[] vertexTR = new VectorM3f[]{c0, c0c1, center, c0c3};
-        emitQuad(
-                new VHelper(vertexTR[0], uvTR[1], ao0),
-                new VHelper(vertexTR[1], uvTR[0], aoC0C1),
-                new VHelper(vertexTR[2], uvTR[3], aoCenter),
-                new VHelper(vertexTR[3], uvTR[2], aoC0C3),
-                tex, sunLight, blockLight, tintR, tintG, tintB
+        emitPatches(new VectorM3f[]{c0, c1, c2, c3}, split, patchUvs(split, rotationSteps), ao, shading);
+    }
+
+    /** The copied block's own face for this direction, or {@code face} unchanged if it has none. */
+    private static Face copiedFace(Face face, Model copiedModel, Direction textureDir) {
+        return Arrays.stream(copiedModel.getElements())
+                .filter(Objects::nonNull)
+                .map(e -> e.getFaces().get(textureDir))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(face);
+    }
+
+    /**
+     * Where a face's four patches meet - the midpoints along each edge plus the centre, and how far
+     * along each edge that is, both as a fraction of the edge and as an extent in texture space.
+     */
+    private record FaceSplit(
+            VectorM3f c0c1, VectorM3f c0c3, VectorM3f c1c2, VectorM3f c2c3, VectorM3f center,
+            float alongC0C1, float alongC0C3,
+            float lowFactorC0C1, float highFactorC0C1,
+            float lowFactorC0C3, float highFactorC0C3) {}
+
+    /** Texture, light and tint shared by all four patches of a face. */
+    private record Shading(int texture, int sunLight, int blockLight, float r, float g, float b) {}
+
+    /**
+     * Splits a face into its four patches. The split does not have to sit in the middle: create
+     * builds its 3-thick panel from a 1px slice of the block's back and a 2px slice of its facing
+     * side, so an odd thickness is divided into whole pixels instead of 1.5/1.5.
+     */
+    private FaceSplit splitFace(VectorM3f c0, VectorM3f c1, VectorM3f c2, VectorM3f c3, Direction blockFacing) {
+        VectorM3f vecC0C1 = new VectorM3f(c1.x - c0.x, c1.y - c0.y, c1.z - c0.z);
+        float lengthC0C1 = Math.round(vecC0C1.length() * 100) / 100f;
+
+        VectorM3f vecC0C3 = new VectorM3f(c3.x - c0.x, c3.y - c0.y, c3.z - c0.z);
+        float lengthC0C3 = Math.round(vecC0C3.length() * 100) / 100f;
+
+        float lowC0C1 = splitLowLength(lengthC0C1, vecC0C1, blockFacing);
+        float lowC0C3 = splitLowLength(lengthC0C3, vecC0C3, blockFacing);
+        float highC0C1 = lengthC0C1 - lowC0C1;
+        float highC0C3 = lengthC0C3 - lowC0C3;
+
+        // where the split sits along each edge, as a fraction of its length
+        float alongC0C1 = lengthC0C1 > 0 ? lowC0C1 / lengthC0C1 : 0.5f;
+        float alongC0C3 = lengthC0C3 > 0 ? lowC0C3 / lengthC0C3 : 0.5f;
+
+        VectorM3f center = new VectorM3f(
+                c0.x + alongC0C1 * vecC0C1.x + alongC0C3 * vecC0C3.x,
+                c0.y + alongC0C1 * vecC0C1.y + alongC0C3 * vecC0C3.y,
+                c0.z + alongC0C1 * vecC0C1.z + alongC0C3 * vecC0C3.z
         );
 
-        // Top left
-        VectorM3f[] vertexTL = new VectorM3f[]{c0c1, c1, c1c2, center};
-        emitQuad(
-                new VHelper(vertexTL[0], uvTL[1], aoC0C1),
-                new VHelper(vertexTL[1], uvTL[0], ao1),
-                new VHelper(vertexTL[2], uvTL[3], aoC1C2),
-                new VHelper(vertexTL[3], uvTL[2], aoCenter),
-                tex, sunLight, blockLight, tintR, tintG, tintB
-        );
+        // texture-space extent of each half (16 model-units span the whole texture)
+        return new FaceSplit(
+                lerpPoint(c0, c1, alongC0C1),
+                lerpPoint(c0, c3, alongC0C3),
+                lerpPoint(c1, c2, alongC0C3),
+                lerpPoint(c3, c2, alongC0C1),
+                center,
+                alongC0C1, alongC0C3,
+                lowC0C1 / 16f, highC0C1 / 16f,
+                lowC0C3 / 16f, highC0C3 / 16f);
+    }
 
-        // Bottom right
-        VectorM3f[] vertexBR = new VectorM3f[]{c0c3, center, c2c3, c3};
-        emitQuad(
-                new VHelper(vertexBR[0], uvBR[1], aoC0C3),
-                new VHelper(vertexBR[1], uvBR[0], aoCenter),
-                new VHelper(vertexBR[2], uvBR[3], aoC2C3),
-                new VHelper(vertexBR[3], uvBR[2], ao3),
-                tex, sunLight, blockLight, tintR, tintG, tintB
-        );
+    /**
+     * The four patches' texture coordinates, in the order top-left, top-right, bottom-left,
+     * bottom-right. They belong to the patches at c1 / c0 / c2 / c3 respectively, so each one uses
+     * the half-extents of the edges that meet in its own corner.
+     */
+    private VectorM2f[][] patchUvs(FaceSplit split, int rotationSteps) {
+        float lowC0C1 = split.lowFactorC0C1(), highC0C1 = split.highFactorC0C1();
+        float lowC0C3 = split.lowFactorC0C3(), highC0C3 = split.highFactorC0C3();
 
-        // Bottom left
-        VectorM3f[] vertexBL = new VectorM3f[]{center, c1c2, c2, c2c3};
-        emitQuad(
-                new VHelper(vertexBL[0], uvBL[1], aoCenter),
-                new VHelper(vertexBL[1], uvBL[0], aoC1C2),
-                new VHelper(vertexBL[2], uvBL[3], ao2),
-                new VHelper(vertexBL[3], uvBL[2], aoC2C3),
-                tex, sunLight, blockLight, tintR, tintG, tintB
-        );
+        VectorM2f[][] uvs = {
+                { // top left
+                        new VectorM2f(0, 0),
+                        new VectorM2f(highC0C1, 0),
+                        new VectorM2f(highC0C1, lowC0C3),
+                        new VectorM2f(0, lowC0C3)},
+                { // top right
+                        new VectorM2f(1 - lowC0C1, 0),
+                        new VectorM2f(1, 0),
+                        new VectorM2f(1, lowC0C3),
+                        new VectorM2f(1 - lowC0C1, lowC0C3)},
+                { // bottom left
+                        new VectorM2f(0, 1 - highC0C3),
+                        new VectorM2f(highC0C1, 1 - highC0C3),
+                        new VectorM2f(highC0C1, 1),
+                        new VectorM2f(0, 1)},
+                { // bottom right
+                        new VectorM2f(1 - lowC0C1, 1 - highC0C3),
+                        new VectorM2f(1, 1 - highC0C3),
+                        new VectorM2f(1, 1),
+                        new VectorM2f(1 - lowC0C1, 1)},
+        };
+        for (VectorM2f[] uv : uvs) rotateUVs(uv, rotationSteps);
+        return uvs;
+    }
+
+    /**
+     * Emits the four patches. Each corner of the face keeps its own AO; the split points get theirs
+     * interpolated at the same fractions the geometry is split at.
+     *
+     * @param corners the face's own four corners, c0 to c3
+     * @param uv      the patches from {@link #patchUvs}, top-left / top-right / bottom-left / bottom-right
+     * @param ao      ambient occlusion at c0 to c3
+     */
+    private void emitPatches(VectorM3f[] corners, FaceSplit split, VectorM2f[][] uv, float[] ao, Shading shading) {
+        VectorM3f c0 = corners[0], c1 = corners[1], c2 = corners[2], c3 = corners[3];
+        VectorM2f[] uvTL = uv[0], uvTR = uv[1], uvBL = uv[2], uvBR = uv[3];
+
+        float aoC0C1 = lerp(ao[0], ao[1], split.alongC0C1());
+        float aoC0C3 = lerp(ao[0], ao[3], split.alongC0C3());
+        float aoC1C2 = lerp(ao[1], ao[2], split.alongC0C3());
+        float aoC2C3 = lerp(ao[3], ao[2], split.alongC0C1());
+        float aoCenter = lerp(aoC0C1, aoC2C3, split.alongC0C3());
+
+        VectorM3f c0c1 = split.c0c1(), c0c3 = split.c0c3(), c1c2 = split.c1c2(), c2c3 = split.c2c3();
+        VectorM3f center = split.center();
+
+        emitQuad( // top right
+                new VHelper(c0, uvTR[1], ao[0]),
+                new VHelper(c0c1, uvTR[0], aoC0C1),
+                new VHelper(center, uvTR[3], aoCenter),
+                new VHelper(c0c3, uvTR[2], aoC0C3),
+                shading);
+
+        emitQuad( // top left
+                new VHelper(c0c1, uvTL[1], aoC0C1),
+                new VHelper(c1, uvTL[0], ao[1]),
+                new VHelper(c1c2, uvTL[3], aoC1C2),
+                new VHelper(center, uvTL[2], aoCenter),
+                shading);
+
+        emitQuad( // bottom right
+                new VHelper(c0c3, uvBR[1], aoC0C3),
+                new VHelper(center, uvBR[0], aoCenter),
+                new VHelper(c2c3, uvBR[3], aoC2C3),
+                new VHelper(c3, uvBR[2], ao[3]),
+                shading);
+
+        emitQuad( // bottom left
+                new VHelper(center, uvBL[1], aoCenter),
+                new VHelper(c1c2, uvBL[0], aoC1C2),
+                new VHelper(c2, uvBL[3], ao[2]),
+                new VHelper(c2c3, uvBL[2], aoC2C3),
+                shading);
     }
 
     private float splitLowLength(float length, VectorM3f edge, Direction blockFacing) {
@@ -565,19 +596,10 @@ public class CopycatRenderer implements BlockRenderer {
         }
     }
 
-    private VectorM2f[] swapUV(VectorM2f[] uvArray) {
-        VectorM2f[] swapped = new VectorM2f[uvArray.length];
-        for (int i = 0; i < uvArray.length; i++) {
-            swapped[i] = new VectorM2f(uvArray[i].y, uvArray[i].x);
-        }
-        return swapped;
-    }
-
-    private void emitQuad(
-            VHelper a, VHelper b, VHelper c, VHelper d,
-            int tex, int sunLight, int blockLight,
-            float tintR, float tintG, float tintB
-    ) {
+    private void emitQuad(VHelper a, VHelper b, VHelper c, VHelper d, Shading shading) {
+        int tex = shading.texture();
+        int sunLight = shading.sunLight(), blockLight = shading.blockLight();
+        float tintR = shading.r(), tintG = shading.g(), tintB = shading.b();
         blockModel.initialize();
         blockModel.add(2);
         TileModel tileModel = blockModel.getTileModel();
