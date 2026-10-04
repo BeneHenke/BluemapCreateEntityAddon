@@ -92,6 +92,7 @@ public class DisplayBoardTextRenderer implements BlockRenderer {
         int rowCount = Math.max(1, entity.getYSize()) * 2;
 
         FontAtlas atlas = FontAtlas.get();
+        if (atlas == null) return;
         LightData ld = block.getLightData();
         int[] light = {ld.getSkyLight(), ld.getBlockLight()};
         int[] tex = {textureGallery.get(FontAtlas.PATH)};
