@@ -47,8 +47,7 @@ public class FileWatcher extends Thread {
         try {
             loadTrainModels();
         } catch (Throwable t) {
-            System.err.println("Error loading train models!");
-            t.printStackTrace();
+            AddonLog.error("failed loading train models", t);
         }
     }
 
@@ -57,8 +56,7 @@ public class FileWatcher extends Thread {
         try {
             loadTrainModels();
         } catch (Throwable t) {
-            System.err.println("Error loading train models!");
-            t.printStackTrace();
+            AddonLog.error("failed loading train models", t);
         }
         try (WatchService watcher = FileSystems.getDefault().newWatchService()) {
             Path path = file.toPath().getParent();
@@ -91,8 +89,7 @@ public class FileWatcher extends Thread {
                 Thread.yield();
             }
         } catch (Throwable e) {
-            System.err.println("Error watching file: " + e.getMessage());
-            e.printStackTrace();
+            AddonLog.error("failed watching " + file, e);
         }
     }
 

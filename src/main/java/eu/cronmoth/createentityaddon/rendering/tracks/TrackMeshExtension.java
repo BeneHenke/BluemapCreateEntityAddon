@@ -1,9 +1,9 @@
 package eu.cronmoth.createentityaddon.rendering.tracks;
 
-import de.bluecolored.bluemap.core.logger.Logger;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePackExtension;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePackExtensionType;
 import de.bluecolored.bluemap.core.util.Key;
+import eu.cronmoth.createentityaddon.AddonLog;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -109,9 +109,9 @@ public class TrackMeshExtension implements ResourcePackExtension {
                     meshes.put(e.getKey(), ObjMesh.parse(in, nameToSlot));
                 }
                 if (slots != null) slotKeys.put(e.getKey(), slots);
-                Logger.global.logInfo("[createentityaddon] mesh '" + e.getKey() + "' from " + e.getValue());
+                AddonLog.info("mesh '" + e.getKey() + "' from " + e.getValue());
             } catch (RuntimeException ex) {
-                Logger.global.logWarning("[createentityaddon] failed parsing " + e.getValue() + ": " + ex.getMessage());
+                AddonLog.warn("failed parsing " + e.getValue() + ": " + ex.getMessage());
             }
         }
     }

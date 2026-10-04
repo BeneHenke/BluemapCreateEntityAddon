@@ -1,6 +1,5 @@
 package eu.cronmoth.createentityaddon.rendering.displayboard;
 
-import de.bluecolored.bluemap.core.logger.Logger;
 import de.bluecolored.bluemap.core.map.TextureGallery;
 import de.bluecolored.bluemap.core.map.hires.RenderSettings;
 import de.bluecolored.bluemap.core.map.hires.TileModelView;
@@ -15,6 +14,7 @@ import de.bluecolored.bluemap.core.util.math.MatrixM4f;
 import de.bluecolored.bluemap.core.world.LightData;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
 import de.bluecolored.bluemap.core.world.block.ExtendedBlock;
+import eu.cronmoth.createentityaddon.AddonLog;
 import eu.cronmoth.createentityaddon.rendering.displayboard.entitymodel.DisplayBoardEntity;
 import eu.cronmoth.createentityaddon.rendering.text.ComponentText;
 import eu.cronmoth.createentityaddon.rendering.text.FontAtlas;
@@ -98,7 +98,7 @@ public class DisplayBoardTextRenderer implements BlockRenderer {
 
         for (int row = 0; row < rowCount; row++) {
             List<FontAtlas.Section> sections = buildRowSections(entity.getDisplay(row));
-            if (DEBUG) Logger.global.logInfo("[cea] display_board " + block.getX() + "," + block.getY() + "," + block.getZ()
+            if (DEBUG) AddonLog.info("display_board " + block.getX() + "," + block.getY() + "," + block.getZ()
                     + " facing=" + facing + " yaw=" + yawDeg + " poseYaw=" + poseYawDeg + " xSize=" + xSize + " ySize=" + entity.getYSize()
                     + " extendSign=" + extendSign + " row=" + row + " sections=" + sections);
             emitLine(tileModel, atlas, sections, row, poseYawDeg, wallDx, wallDz, assemblyCenter, light, tex);
@@ -122,7 +122,7 @@ public class DisplayBoardTextRenderer implements BlockRenderer {
                 .rotate(0f, poseYawDeg, 0f)
                 .translate(worldX, rowCenterY, worldZ);
 
-        if (DEBUG) Logger.global.logInfo("[cea] emitLine row=" + rowIndex + " sections=" + sections
+        if (DEBUG) AddonLog.info("emitLine row=" + rowIndex + " sections=" + sections
                 + " poseYawDeg=" + poseYawDeg + " wallDx=" + wallDx + " wallDz=" + wallDz
                 + " assemblyCenter=" + assemblyCenter
                 + " worldX=" + worldX + " worldZ=" + worldZ + " rowCenterY=" + rowCenterY

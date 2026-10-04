@@ -20,6 +20,7 @@ import eu.cronmoth.createentityaddon.rendering.contraptions.entitymodel.Contrapt
 import eu.cronmoth.createentityaddon.rendering.contraptions.ContraptionEntityRenderer;
 import eu.cronmoth.createentityaddon.rendering.displayboard.DisplayBoardTextRenderer;
 import eu.cronmoth.createentityaddon.rendering.displayboard.entitymodel.DisplayBoardEntity;
+import eu.cronmoth.createentityaddon.rendering.sublevel.SubLevelInstaller;
 import eu.cronmoth.createentityaddon.rendering.text.FontAtlasExtension;
 import eu.cronmoth.createentityaddon.rendering.text.LangExtension;
 import eu.cronmoth.createentityaddon.rendering.tracks.TrackMeshExtension;
@@ -71,6 +72,13 @@ public class CreateEntityAddon implements Runnable {
                         fileWatchers.add(fileWatcher);
                     }
                 }
+                for (BmMap map : service.getMaps().values()) {
+                    try {
+                        SubLevelInstaller.install(map);
+                    } catch (Throwable t) {
+                        AddonLog.error("failed to enable sub-level rendering for map " + map.getId(), t);
+                    }
+                }
             });
 
             BlueMapAPI.onDisable(api -> {
@@ -81,8 +89,7 @@ public class CreateEntityAddon implements Runnable {
                 }
             });
         } catch (Exception ex) {
-            System.err.println("Failed to start FileWatcher: " + ex.getMessage());
-            ex.printStackTrace();
+            AddonLog.error("failed to start FileWatcher", ex);
         }
 
     }

@@ -1,10 +1,10 @@
 package eu.cronmoth.createentityaddon.rendering.text;
 
-import de.bluecolored.bluemap.core.logger.Logger;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePackExtension;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePackExtensionType;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.texture.Texture;
 import de.bluecolored.bluemap.core.util.Key;
+import eu.cronmoth.createentityaddon.AddonLog;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -36,7 +36,7 @@ public class FontAtlasExtension implements ResourcePackExtension {
         try {
             return List.of(FontAtlas.buildTexture());
         } catch (IOException e) {
-            Logger.global.logWarning("[createentityaddon] failed building font atlas: " + e.getMessage());
+            AddonLog.warn("failed building font atlas: " + e.getMessage());
             return List.of();
         }
     }
