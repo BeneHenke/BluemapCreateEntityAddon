@@ -8,6 +8,10 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,7 +21,7 @@ public final class FontAtlas {
 
     public static final ResourcePath<Texture> PATH = new ResourcePath<>("createentityaddon", "font_atlas");
 
-    private static final String RESOURCE = "/createentityaddon/font/ascii.png";
+    private static final String BITMAP = "assets/minecraft/textures/font/ascii.png";
     private static final int COLS = 16;
     private static final int CELL = 8; // native px per glyph cell in ascii.png
     private static final char FIRST = 0x20; // ' ' - ascii.png's grid is blank before this (rows 0-1)
@@ -30,29 +34,43 @@ public final class FontAtlas {
 
     private static final float SPACE_ADVANCE_PX = 4f;
 
+    private static volatile BufferedImage bitmap;
     private static volatile FontAtlas instance;
 
     public static FontAtlas get() {
         FontAtlas i = instance;
-        if (i == null) {
+        if (i == null && bitmap != null) {
             synchronized (FontAtlas.class) {
                 i = instance;
-                if (i == null) instance = i = new FontAtlas();
+                if (i == null) instance = i = new FontAtlas(bitmap);
             }
         }
         return i;
     }
 
-    private static BufferedImage loadBitmap() throws IOException {
-        try (InputStream in = FontAtlas.class.getResourceAsStream(RESOURCE)) {
-            if (in == null) throw new IOException("missing bundled resource " + RESOURCE);
+    public static BufferedImage readBitmap(Path root) throws IOException {
+        if (Files.isDirectory(root)) return readBitmapFrom(root);
+        try (FileSystem fs = FileSystems.newFileSystem(root, (ClassLoader) null)) {
+            for (Path fsRoot : fs.getRootDirectories()) {
+                BufferedImage image = readBitmapFrom(fsRoot);
+                if (image != null) return image;
+            }
+        }
+        return null;
+    }
+
+    private static BufferedImage readBitmapFrom(Path root) throws IOException {
+        Path file = root.resolve(BITMAP);
+        if (!Files.isRegularFile(file)) return null;
+        try (InputStream in = Files.newInputStream(file)) {
             return ImageIO.read(in);
         }
     }
 
-    /** Wraps the bundled vanilla font bitmap as a {@link Texture} at {@link #PATH} - see {@link FontAtlasExtension}. */
-    public static Texture buildTexture() throws IOException {
-        return Texture.from(PATH, loadBitmap());
+    /** Uses the bitmap for the glyph layout (the first one found wins) and wraps it as a {@link Texture} at {@link #PATH}. */
+    public static Texture buildTexture(BufferedImage image) throws IOException {
+        if (bitmap == null) bitmap = image;
+        return Texture.from(PATH, image);
     }
 
     /**
@@ -83,13 +101,7 @@ public final class FontAtlas {
 
     private final Map<Character, Glyph> glyphs = new HashMap<>();
 
-    private FontAtlas() {
-        BufferedImage image;
-        try {
-            image = loadBitmap();
-        } catch (IOException e) {
-            throw new IllegalStateException("failed loading bundled font bitmap " + RESOURCE, e);
-        }
+    private FontAtlas(BufferedImage image) {
         int atlasW = image.getWidth(), atlasH = image.getHeight();
 
         for (char c = FIRST; c <= LAST; c++) {
