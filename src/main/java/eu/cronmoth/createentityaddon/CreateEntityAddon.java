@@ -4,6 +4,7 @@ import de.bluecolored.bluemap.api.BlueMapAPI;
 import de.bluecolored.bluemap.common.BlueMapService;
 import de.bluecolored.bluemap.common.api.BlueMapAPIImpl;
 import de.bluecolored.bluemap.core.map.BmMap;
+import de.bluecolored.bluemap.core.map.hires.RenderPassType;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
 import de.bluecolored.bluemap.core.map.hires.entity.EntityRendererType;
 import de.bluecolored.bluemap.core.util.Key;
@@ -20,6 +21,7 @@ import eu.cronmoth.createentityaddon.rendering.contraptions.entitymodel.Contrapt
 import eu.cronmoth.createentityaddon.rendering.contraptions.ContraptionEntityRenderer;
 import eu.cronmoth.createentityaddon.rendering.displayboard.DisplayBoardTextRenderer;
 import eu.cronmoth.createentityaddon.rendering.displayboard.entitymodel.DisplayBoardEntity;
+import eu.cronmoth.createentityaddon.rendering.sublevel.SubLevelRenderPass;
 import eu.cronmoth.createentityaddon.rendering.text.FontAtlasExtension;
 import eu.cronmoth.createentityaddon.rendering.text.LangExtension;
 import eu.cronmoth.createentityaddon.rendering.tracks.TrackMeshExtension;
@@ -51,6 +53,7 @@ public class CreateEntityAddon implements Runnable {
         ResourcePack.Extension.REGISTRY.register(LangExtension.TYPE);
         BlockRendererType.REGISTRY.register(DisplayBoardTextRenderer.TYPE);
         BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "flap_display"), DisplayBoardEntity.class));
+        RenderPassType.REGISTRY.register(SubLevelRenderPass.TYPE);
 
     }
 
@@ -81,8 +84,7 @@ public class CreateEntityAddon implements Runnable {
                 }
             });
         } catch (Exception ex) {
-            System.err.println("Failed to start FileWatcher: " + ex.getMessage());
-            ex.printStackTrace();
+            AddonLog.error("failed to start FileWatcher", ex);
         }
 
     }

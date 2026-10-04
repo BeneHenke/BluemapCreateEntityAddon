@@ -17,6 +17,7 @@ import de.bluecolored.bluemap.core.util.math.MatrixM4f;
 import de.bluecolored.bluemap.core.world.LightData;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
 import de.bluecolored.bluemap.core.world.block.ExtendedBlock;
+import eu.cronmoth.createentityaddon.AddonLog;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Connection;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Normals;
 import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.Positions;
@@ -133,8 +134,8 @@ public class TrackRenderer implements BlockRenderer {
             List<Normals> normals = c.getNormal();
             if (pos == null || pos.size() < 2 || axes == null || axes.size() < 2
                     || normals == null || normals.size() < 2) {
-                if (TRACK_DEBUG) de.bluecolored.bluemap.core.logger.Logger.global.logInfo(
-                        "[cea] track " + block.getX() + "," + block.getY() + "," + block.getZ()
+                if (TRACK_DEBUG) AddonLog.info(
+                        "track " + block.getX() + "," + block.getY() + "," + block.getZ()
                         + " connection skipped - bad nbt: pos=" + (pos == null ? "null" : pos.size())
                         + " axes=" + (axes == null ? "null" : axes.size())
                         + " normals=" + (normals == null ? "null" : normals.size()));
@@ -152,8 +153,8 @@ public class TrackRenderer implements BlockRenderer {
             Vector3d faceNormal2 = vec(normals.get(1)).normalize();
 
             BezierCurve.Sample[] samples = BezierCurve.sample(end1, end2, axis1, axis2, faceNormal1, faceNormal2);
-            if (TRACK_DEBUG) de.bluecolored.bluemap.core.logger.Logger.global.logInfo(
-                    "[cea] track " + block.getX() + "," + block.getY() + "," + block.getZ()
+            if (TRACK_DEBUG) AddonLog.info(
+                    "track " + block.getX() + "," + block.getY() + "," + block.getZ()
                     + " -> " + pos.getLast().getX() + "," + pos.getLast().getY() + "," + pos.getLast().getZ()
                     + " mat=" + c.getMaterial()
                     + " end1=" + end1 + " end2=" + end2 + " axis1=" + axis1 + " axis2=" + axis2

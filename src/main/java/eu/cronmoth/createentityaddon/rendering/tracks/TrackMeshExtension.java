@@ -1,9 +1,9 @@
 package eu.cronmoth.createentityaddon.rendering.tracks;
 
-import de.bluecolored.bluemap.core.logger.Logger;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePackExtension;
 import de.bluecolored.bluemap.core.util.Key;
+import eu.cronmoth.createentityaddon.AddonLog;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -97,7 +97,7 @@ public class TrackMeshExtension implements ResourcePackExtension {
             try (FileSystem fs = FileSystems.newFileSystem(root, (ClassLoader) null)) {
                 for (Path fsRoot : fs.getRootDirectories()) scanRoot(fsRoot);
             } catch (IOException | RuntimeException ex) {
-                Logger.global.logDebug("[createentityaddon] could not open pack " + root + ": " + ex);
+                AddonLog.debug("could not open pack " + root + ": " + ex);
             }
             return;
         }
@@ -131,9 +131,9 @@ public class TrackMeshExtension implements ResourcePackExtension {
                 meshes.put(meshKey, ObjMesh.parse(in, nameToSlot));
             }
             if (slots != null) slotKeys.put(meshKey, slots);
-            Logger.global.logInfo("[createentityaddon] mesh '" + meshKey + "' from " + assetPath);
+            AddonLog.info("mesh '" + meshKey + "' from " + assetPath);
         } catch (IOException | RuntimeException ex) {
-            Logger.global.logWarning("[createentityaddon] failed parsing " + assetPath + ": " + ex.getMessage());
+            AddonLog.warn("failed parsing " + assetPath + ": " + ex.getMessage());
         }
     }
 

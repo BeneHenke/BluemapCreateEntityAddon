@@ -3,10 +3,10 @@ package eu.cronmoth.createentityaddon.rendering.text;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import de.bluecolored.bluemap.core.logger.Logger;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePackExtension;
 import de.bluecolored.bluemap.core.util.Key;
+import eu.cronmoth.createentityaddon.AddonLog;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -72,7 +72,7 @@ public class LangExtension implements ResourcePackExtension {
             try (FileSystem fs = FileSystems.newFileSystem(root, (ClassLoader) null)) {
                 for (Path fsRoot : fs.getRootDirectories()) scanRoot(fsRoot);
             } catch (IOException | RuntimeException ex) {
-                Logger.global.logDebug("[createentityaddon] could not open pack " + root + ": " + ex);
+                AddonLog.debug("could not open pack " + root + ": " + ex);
             }
             return;
         }
@@ -86,7 +86,7 @@ public class LangExtension implements ResourcePackExtension {
                 try (InputStream in = Files.newInputStream(enUs)) {
                     mergeLangFile(in);
                 } catch (RuntimeException ex) {
-                    Logger.global.logWarning("[createentityaddon] failed parsing " + enUs + ": " + ex.getMessage());
+                    AddonLog.warn("failed parsing " + enUs + ": " + ex.getMessage());
                 }
             }
         }
