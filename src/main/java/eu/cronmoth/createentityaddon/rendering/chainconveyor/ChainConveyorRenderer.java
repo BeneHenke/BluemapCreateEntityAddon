@@ -18,6 +18,7 @@ import de.bluecolored.bluemap.core.util.math.MatrixM4f;
 import de.bluecolored.bluemap.core.util.math.VectorM3f;
 import de.bluecolored.bluemap.core.world.LightData;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
+import eu.cronmoth.createentityaddon.AddonLog;
 import eu.cronmoth.createentityaddon.rendering.chainconveyor.entitymodel.ChainConveyorEntity;
 import eu.cronmoth.createentityaddon.rendering.tracks.ObjMesh;
 import eu.cronmoth.createentityaddon.rendering.tracks.ObjMeshRenderer;
@@ -67,13 +68,13 @@ public class ChainConveyorRenderer implements BlockRenderer {
         boolean debug = Boolean.getBoolean("cea.trackdebug");
 
         if (!(block.getBlockEntity() instanceof ChainConveyorEntity entity)) {
-            if (debug) de.bluecolored.bluemap.core.logger.Logger.global.logInfo(
-                    "[cea] chain_conveyor " + block.getX() + "," + block.getY() + "," + block.getZ()
+            if (debug) AddonLog.info(
+                    "chain_conveyor " + block.getX() + "," + block.getY() + "," + block.getZ()
                     + " - blockEntity is " + block.getBlockEntity());
             return;
         }
-        if (debug) de.bluecolored.bluemap.core.logger.Logger.global.logInfo(
-                "[cea] chain_conveyor " + block.getX() + "," + block.getY() + "," + block.getZ()
+        if (debug) AddonLog.info(
+                "chain_conveyor " + block.getX() + "," + block.getY() + "," + block.getZ()
                 + " - " + entity.getConnections().size() + " connections: "
                 + Arrays.deepToString(entity.getConnections().toArray())
                 + " | chain model = " + resourcePack.getModels().get(new ResourcePath<>("minecraft", "block/chain")));
