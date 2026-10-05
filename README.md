@@ -1,4 +1,19 @@
-This is a Bluemap Addon that renders the Create Contraptions and train tracks in bluemap. It will also generate the train models for https://github.com/BeneHenke/CreateTrainWebAPI. To install it simply put it into the Bluemap packs folder. To get more of the Create blocks rendered use it with https://github.com/Uiniel/BlueMapModelLoaders and https://github.com/Uiniel/BlueMap-Create-Resource-Pack.
+This is a BlueMap addon that renders Create contraptions, copycat blocks, train tracks and more in BlueMap. It
+also generates the train models for https://github.com/BeneHenke/CreateTrainWebAPI.
+
+Features:
+- Contraptions (windmills, trains, ...)
+- Copycat blocks
+- Train tracks
+- Chain conveyors
+- Text on Create display boards
+- Create: Aeronautics structures (Sable sub-levels)
+
+To install it, simply put it into the BlueMap packs folder. To get more of the Create blocks rendered, use it
+with https://github.com/Uiniel/BlueMapModelLoaders and https://github.com/Uiniel/BlueMap-Create-Resource-Pack.
+
+Create: Aeronautics: to get the Aeronautics assets into BlueMap, unpack the Aeronautics jar and add the jars
+from META-INF\jarjar (aeronautics, simulated, offroad) to BlueMap's mods folder.
 
 Contraptions:
 <img width="2561" height="1440" alt="Windmill_comp" src="https://github.com/user-attachments/assets/40d949a9-4f8f-4ddd-8f49-8b3fbdd0df87" />
