@@ -13,7 +13,7 @@ To install it, simply put it into the BlueMap packs folder. To get more of the C
 with https://github.com/Uiniel/BlueMapModelLoaders and https://github.com/Uiniel/BlueMap-Create-Resource-Pack.
 
 Create: Aeronautics: to get the Aeronautics assets into BlueMap, unpack the Aeronautics jar and add the jars
-from META-INF\jarjar (aeronautics, simulated, offroad) to BlueMap's mods folder.
+from META-INF\jarjar (aeronautics, simulated, offroad) to BlueMap's packs folder.
 
 Contraptions:
 <img width="2561" height="1440" alt="Windmill_comp" src="https://github.com/user-attachments/assets/40d949a9-4f8f-4ddd-8f49-8b3fbdd0df87" />
