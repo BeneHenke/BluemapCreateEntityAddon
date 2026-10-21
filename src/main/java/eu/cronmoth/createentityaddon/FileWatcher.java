@@ -173,7 +173,6 @@ public class FileWatcher extends Thread {
             Files.createDirectories(filePath.getParent());
             try (OutputStream outputStream = new FileOutputStream(filePath.toFile())) {
                 new PRBMWriter(outputStream).write((ArrayTileModel)tileModelView.getTileModel());
-
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to write", e);

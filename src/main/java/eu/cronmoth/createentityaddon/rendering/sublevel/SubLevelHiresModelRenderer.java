@@ -12,7 +12,13 @@ import de.bluecolored.bluemap.core.world.World;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
 import de.bluecolored.bluemap.core.world.mca.MCAWorld;
 import eu.cronmoth.createentityaddon.AddonLog;
+import eu.cronmoth.createentityaddon.CreateEntityAddon;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -43,10 +49,29 @@ public class SubLevelHiresModelRenderer extends HiresModelRenderer {
 
         try {
             for (SubLevelData ship : ships) {
+
+                if (!CreateEntityAddon.config.isBakeSableSublevelsIntoMap()) {
+                    ArrayTileModel arrayTileModel = new ArrayTileModel(100);
+                    TileModelView tileModelView = new TileModelView(arrayTileModel);
+                    tileModel = tileModelView.getTileModel();
+                }
+
                 int x = (int) Math.floor(ship.position[0]);
                 int z = (int) Math.floor(ship.position[2]);
                 if (x < modelMin.getX() || x > modelMax.getX() || z < modelMin.getZ() || z > modelMax.getZ()) continue;
                 renderShip(world, ship, new Vector3i(modelMin.getX(), 0, modelMin.getZ()), new TileModelView(tileModel));
+
+                if (!CreateEntityAddon.config.isBakeSableSublevelsIntoMap()) {
+                    Path filePath = Path.of("sublevel_" + ship.uuid);
+                    try {
+                        Files.createDirectories(filePath.getParent());
+                        try (OutputStream outputStream = new FileOutputStream(filePath.toFile())) {
+                            new PRBMWriter(outputStream).write((ArrayTileModel) tileModel);
+                        }
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
             }
         } catch (MaxCapacityReachedException ex) {
             AddonLog.warnOnce("max-capacity-reached",
