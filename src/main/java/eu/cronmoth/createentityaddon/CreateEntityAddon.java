@@ -29,13 +29,15 @@ import eu.cronmoth.createentityaddon.rendering.tracks.entitymodel.TrackEntity;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePackExtensionType;
 
 import java.io.*;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 
 
 public class CreateEntityAddon implements Runnable {
-    List<FileWatcher> fileWatchers;
+    private List<FileWatcher> fileWatchers;
+    public static Config config;
 
     private void addBluemapRegistryValues() {
         EntityRendererType.REGISTRY.register(ContraptionEntityRenderer.TYPE);
@@ -78,6 +80,16 @@ public class CreateEntityAddon implements Runnable {
                     } catch (Throwable t) {
                         AddonLog.error("failed to enable sub-level rendering for map " + map.getId(), t);
                     }
+                }
+                Path folder = ((BlueMapAPIImpl) api)
+                        .plugin()
+                        .getServerInterface()
+                        .getConfigFolder();
+
+                try {
+                    config = new ConfigLoader(folder).getConfig();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             });
 
