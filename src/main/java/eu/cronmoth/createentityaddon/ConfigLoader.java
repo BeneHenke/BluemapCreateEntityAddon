@@ -1,59 +1,61 @@
 package eu.cronmoth.createentityaddon;
 
 import lombok.Getter;
-import org.yaml.snakeyaml.Yaml;
+import org.spongepowered.configurate.ConfigurateException;
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.hocon.HoconConfigurationLoader;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Writer;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Map;
-import java.util.Objects;
-
-import org.yaml.snakeyaml.Yaml;
-
-import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 public class ConfigLoader {
 
+    private static final String CONFIG_NAME = "createentityaddon";
+    private static final String CONFIG_TEMPLATE_RESOURCE = "/eu/cronmoth/createentityaddon/config/createentityaddon.conf";
+
     private final Path configPath;
-    private final Yaml yaml = new Yaml();
     @Getter
     private Config config;
 
-    public ConfigLoader(Path folder) throws IOException {
-        Files.createDirectories(folder);
-        configPath = folder.resolve("createentityaddon.yml");
+    public ConfigLoader(Path configRoot) throws IOException {
+        Files.createDirectories(configRoot);
+        configPath = configRoot.resolve(CONFIG_NAME + ".conf");
 
         if (Files.notExists(configPath)) {
-            config = new Config();
-            save();
-        } else {
-            load();
+            writeDefaultConfig();
         }
+
+        load();
+    }
+
+    private void writeDefaultConfig() throws IOException {
+        try (InputStream in = ConfigLoader.class.getResourceAsStream(CONFIG_TEMPLATE_RESOURCE)) {
+            if (in == null) {
+                throw new IOException("Config template not found: " + CONFIG_TEMPLATE_RESOURCE);
+            }
+            Files.copy(in, configPath, StandardCopyOption.REPLACE_EXISTING);
+        }
+        AddonLog.info("created default config at " + configPath);
     }
 
     public void load() throws IOException {
-        try (Reader reader = Files.newBufferedReader(configPath)) {
-            Config loaded = yaml.loadAs(reader, Config.class);
+        HoconConfigurationLoader loader = HoconConfigurationLoader.builder()
+                .path(configPath)
+                .build();
 
-            if (loaded != null) {
-                config = loaded;
-            } else {
-                config = new Config();
-            }
-        }
-    }
-
-    public void save() throws IOException {
-        try (Writer writer = Files.newBufferedWriter(configPath)) {
-            writer.write(config.toString());
-
+        try {
+            ConfigurationNode node = loader.load();
+            Config loaded = node.get(Config.class);
+            config = loaded != null ? loaded : new Config();
+        } catch (ConfigurateException ex) {
+            AddonLog.error("failed to parse config file " + configPath + ", using defaults", ex);
+            config = new Config();
         }
     }
 }

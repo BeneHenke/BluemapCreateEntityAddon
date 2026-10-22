@@ -95,7 +95,7 @@ public class FileWatcher extends Thread {
 
     private void loadTrainModels() {
         String workingDir = System.getProperty("user.dir");
-        String path = workingDir + "/bluemap/train_models/";
+        String path = workingDir + "/" + CreateEntityAddon.config.getTrainModelsDirectory() + "/";
 
         File folder = new File(path);
         File[] files = folder.listFiles();
