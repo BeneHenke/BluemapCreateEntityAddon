@@ -2,6 +2,7 @@ package eu.cronmoth.createentityaddon;
 
 import de.bluecolored.bluemap.api.BlueMapAPI;
 import de.bluecolored.bluemap.common.BlueMapService;
+
 import de.bluecolored.bluemap.common.api.BlueMapAPIImpl;
 import de.bluecolored.bluemap.core.map.BmMap;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
@@ -34,62 +35,76 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-
 public class CreateEntityAddon implements Runnable {
     private List<FileWatcher> fileWatchers;
     public static Config config;
 
     private void addBluemapRegistryValues() {
-        EntityRendererType.REGISTRY.register(ContraptionEntityRenderer.TYPE);
-        EntityType.REGISTRY.register(new EntityType.Impl(new Key("create", "stationary_contraption"), ContraptionEntity.class));
-        BlockRendererType.REGISTRY.register(CopycatRenderer.TYPE);
-        BlockEntityType.REGISTRY.register(new CopycatBlockType.Impl(new Key("create", "copycat"), CopycatBlockEntity.class));
-        BlockRendererType.REGISTRY.register(TrackRenderer.TYPE);
-        BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "track"), TrackEntity.class));
-        ResourcePackExtensionType.REGISTRY.register(TrackMeshExtension.TYPE);
-        BlockRendererType.REGISTRY.register(ChainConveyorRenderer.TYPE);
-        BlockEntityType.REGISTRY.register(new ChainConveyorBlockType.Impl(new Key("create", "chain_conveyor"), ChainConveyorEntity.class));
-        //Display Board
-        ResourcePackExtensionType.REGISTRY.register(FontAtlasExtension.TYPE);
-        ResourcePackExtensionType.REGISTRY.register(LangExtension.TYPE);
-        BlockRendererType.REGISTRY.register(DisplayBoardTextRenderer.TYPE);
-        BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "flap_display"), DisplayBoardEntity.class));
-
+        if (config.isRenderContraptions()) {
+            EntityRendererType.REGISTRY.register(ContraptionEntityRenderer.TYPE);
+            EntityType.REGISTRY.register(new EntityType.Impl(new Key("create", "stationary_contraption"), ContraptionEntity.class));
+        }
+        if (config.isRenderCopycats()) {
+            BlockRendererType.REGISTRY.register(CopycatRenderer.TYPE);
+            BlockEntityType.REGISTRY.register(new CopycatBlockType.Impl(new Key("create", "copycat"), CopycatBlockEntity.class));
+        }
+        if (config.isRenderTracks()) {
+            BlockRendererType.REGISTRY.register(TrackRenderer.TYPE);
+            BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "track"), TrackEntity.class));
+            ResourcePackExtensionType.REGISTRY.register(TrackMeshExtension.TYPE);
+        }
+        if (config.isRenderChainConveyors()) {
+            BlockRendererType.REGISTRY.register(ChainConveyorRenderer.TYPE);
+            BlockEntityType.REGISTRY.register(new ChainConveyorBlockType.Impl(new Key("create", "chain_conveyor"), ChainConveyorEntity.class));
+        }
+        if (config.isRenderDisplayBoards()) {
+            ResourcePackExtensionType.REGISTRY.register(FontAtlasExtension.TYPE);
+            ResourcePackExtensionType.REGISTRY.register(LangExtension.TYPE);
+            BlockRendererType.REGISTRY.register(DisplayBoardTextRenderer.TYPE);
+            BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "flap_display"), DisplayBoardEntity.class));
+        }
     }
 
     @Override
     public void run() {
-        addBluemapRegistryValues();
         try {
             fileWatchers = new ArrayList<>();
             BlueMapAPI.onEnable(api ->
             {
+                Path configFolder = ((BlueMapAPIImpl) api)
+                        .plugin()
+                        .getServerInterface()
+                        .getConfigFolder();
+
+                try {
+                    config = new ConfigLoader(configFolder).getConfig();
+                } catch (IOException e) {
+                    AddonLog.error("failed to load config, using defaults", e);
+                    config = new Config();
+                }
+
+                addBluemapRegistryValues();
+
                 BlueMapService service = ((BlueMapAPIImpl) api).blueMapService();
-                for (BmMap map : service.getMaps().values()) {
-                    MCAWorld world = (MCAWorld) map.getWorld();
-                    File dataDirectory = new File(world.getWorldFolder() + "/data");
-                    if (dataDirectory.exists() && world.getDimension().getKey().getValue().equalsIgnoreCase("overworld")) {
-                        FileWatcher fileWatcher = new FileWatcher(new File(world.getWorldFolder() + "/data/create_tracks.dat"), map);
-                        fileWatcher.start();
-                        fileWatchers.add(fileWatcher);
+
+                if (config.isWatchTrackDataFile()) {
+                    for (BmMap map : service.getMaps().values()) {
+                        MCAWorld world = (MCAWorld) map.getWorld();
+                        File trackDataFile = world.getWorldFolder().resolve(config.getTrackDataFile()).toFile();
+                        if (trackDataFile.exists()) {
+                            FileWatcher fileWatcher = new FileWatcher(trackDataFile, map);
+                            fileWatcher.start();
+                            fileWatchers.add(fileWatcher);
+                        }
                     }
                 }
+
                 for (BmMap map : service.getMaps().values()) {
                     try {
                         SubLevelInstaller.install(map);
                     } catch (Throwable t) {
                         AddonLog.error("failed to enable sub-level rendering for map " + map.getId(), t);
                     }
-                }
-                Path folder = ((BlueMapAPIImpl) api)
-                        .plugin()
-                        .getServerInterface()
-                        .getConfigFolder();
-
-                try {
-                    config = new ConfigLoader(folder).getConfig();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
                 }
             });
 

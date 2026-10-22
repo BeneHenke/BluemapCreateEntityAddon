@@ -19,7 +19,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * Renders the vanilla tile and then adds every Sable sub-level whose world position lies
@@ -48,9 +51,12 @@ public class SubLevelHiresModelRenderer extends HiresModelRenderer {
         if (ships.isEmpty()) return;
 
         try {
+            boolean bakeIntoMap = CreateEntityAddon.config == null
+                    || CreateEntityAddon.config.isBakeSableSublevelsIntoMap();
+
             for (SubLevelData ship : ships) {
 
-                if (!CreateEntityAddon.config.isBakeSableSublevelsIntoMap()) {
+                if (!bakeIntoMap) {
                     ArrayTileModel arrayTileModel = new ArrayTileModel(100);
                     TileModelView tileModelView = new TileModelView(arrayTileModel);
                     tileModel = tileModelView.getTileModel();
@@ -61,8 +67,10 @@ public class SubLevelHiresModelRenderer extends HiresModelRenderer {
                 if (x < modelMin.getX() || x > modelMax.getX() || z < modelMin.getZ() || z > modelMax.getZ()) continue;
                 renderShip(world, ship, new Vector3i(modelMin.getX(), 0, modelMin.getZ()), new TileModelView(tileModel));
 
-                if (!CreateEntityAddon.config.isBakeSableSublevelsIntoMap()) {
-                    Path filePath = Path.of("sublevel_" + ship.uuid);
+                if (!bakeIntoMap) {
+                    String workingDir = System.getProperty("user.dir");
+                    Path dir = Path.of(workingDir, CreateEntityAddon.config.getSublevelsDirectory());
+                    Path filePath = dir.resolve("sublevel_" + ship.uuid + ".prbm");
                     try {
                         Files.createDirectories(filePath.getParent());
                         try (OutputStream outputStream = new FileOutputStream(filePath.toFile())) {
@@ -73,9 +81,39 @@ public class SubLevelHiresModelRenderer extends HiresModelRenderer {
                     }
                 }
             }
+
+            if (!bakeIntoMap) {
+                cleanupStaleSublevelFiles(ships);
+            }
         } catch (MaxCapacityReachedException ex) {
             AddonLog.warnOnce("max-capacity-reached",
                     "one or more map-tiles are too complex to be completed (@~ %s to %s): %s".formatted(modelMin, modelMax, ex));
+        }
+    }
+
+    private void cleanupStaleSublevelFiles(List<SubLevelData> ships) {
+        String workingDir = System.getProperty("user.dir");
+        Path dir = Path.of(workingDir, CreateEntityAddon.config.getSublevelsDirectory());
+        if (!Files.isDirectory(dir)) return;
+
+        Set<String> expected = new HashSet<>();
+        for (SubLevelData ship : ships) {
+            expected.add("sublevel_" + ship.uuid + ".prbm");
+        }
+
+        try (Stream<Path> files = Files.list(dir)) {
+            files.filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().endsWith(".prbm"))
+                    .filter(p -> !expected.contains(p.getFileName().toString()))
+                    .forEach(p -> {
+                        try {
+                            Files.deleteIfExists(p);
+                        } catch (IOException e) {
+                            AddonLog.warn("failed to delete stale sublevel file " + p);
+                        }
+                    });
+        } catch (IOException e) {
+            AddonLog.warn("failed to list sublevel directory " + dir);
         }
     }
 
