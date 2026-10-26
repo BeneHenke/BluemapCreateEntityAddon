@@ -65,7 +65,7 @@ public class SubLevelHiresModelRenderer extends HiresModelRenderer {
                 int x = (int) Math.floor(ship.position[0]);
                 int z = (int) Math.floor(ship.position[2]);
                 if (x < modelMin.getX() || x > modelMax.getX() || z < modelMin.getZ() || z > modelMax.getZ()) continue;
-                renderShip(world, ship, new Vector3i(modelMin.getX(), 0, modelMin.getZ()), new TileModelView(tileModel));
+                renderShip(world, ship, new Vector3i(modelMin.getX(), 0, modelMin.getZ()), new TileModelView(tileModel), bakeIntoMap);
 
                 if (!bakeIntoMap) {
                     String workingDir = System.getProperty("user.dir");
@@ -117,7 +117,7 @@ public class SubLevelHiresModelRenderer extends HiresModelRenderer {
         }
     }
 
-    private void renderShip(World world, SubLevelData ship, Vector3i modelAnchor, TileModelView tileModel) {
+    private void renderShip(World world, SubLevelData ship, Vector3i modelAnchor, TileModelView tileModel, boolean bakeTransform) {
         BlockStateModelRenderer renderer = blockRenderer.get();
         Color color = new Color();
 
@@ -141,9 +141,11 @@ public class SubLevelHiresModelRenderer extends HiresModelRenderer {
         tileModel.initialize(modelStart);
 
         MatrixM4f pose = new MatrixM4f().identity()
-                .translate((float) (ship.baseX - ship.pivot[0]), (float) (ship.baseY - ship.pivot[1]), (float) (ship.baseZ - ship.pivot[2]))
-                .rotateByQuaternion((float) ship.orientation[0], (float) ship.orientation[1], (float) ship.orientation[2], (float) ship.orientation[3])
+                .translate((float) (ship.baseX - ship.pivot[0]), (float) (ship.baseY - ship.pivot[1]), (float) (ship.baseZ - ship.pivot[2]));
+        if (bakeTransform) {
+            pose.rotateByQuaternion((float) ship.orientation[0], (float) ship.orientation[1], (float) ship.orientation[2], (float) ship.orientation[3])
                 .translate((float) (ship.position[0] - modelAnchor.getX()), (float) (ship.position[1] - modelAnchor.getY()), (float) (ship.position[2] - modelAnchor.getZ()));
+        }
         tileModel.transform(pose);
     }
 }

@@ -2,7 +2,6 @@ package eu.cronmoth.createentityaddon;
 
 import de.bluecolored.bluemap.api.BlueMapAPI;
 import de.bluecolored.bluemap.common.BlueMapService;
-
 import de.bluecolored.bluemap.common.api.BlueMapAPIImpl;
 import de.bluecolored.bluemap.core.map.BmMap;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
@@ -11,10 +10,8 @@ import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.world.mca.MCAWorld;
 import de.bluecolored.bluemap.core.world.mca.blockentity.BlockEntityType;
 import de.bluecolored.bluemap.core.world.mca.entity.EntityType;
-import eu.cronmoth.createentityaddon.rendering.chainconveyor.ChainConveyorBlockType;
 import eu.cronmoth.createentityaddon.rendering.chainconveyor.ChainConveyorRenderer;
 import eu.cronmoth.createentityaddon.rendering.chainconveyor.entitymodel.ChainConveyorEntity;
-import eu.cronmoth.createentityaddon.rendering.copycats.CopycatBlockType;
 import eu.cronmoth.createentityaddon.rendering.copycats.entitymodel.CopycatBlockEntity;
 import eu.cronmoth.createentityaddon.rendering.copycats.CopycatRenderer;
 import eu.cronmoth.createentityaddon.rendering.contraptions.entitymodel.ContraptionEntity;
@@ -34,41 +31,41 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class CreateEntityAddon implements Runnable {
     private List<FileWatcher> fileWatchers;
     public static Config config;
 
     private void addBluemapRegistryValues() {
-        if (config.isRenderContraptions()) {
-            EntityRendererType.REGISTRY.register(ContraptionEntityRenderer.TYPE);
-            EntityType.REGISTRY.register(new EntityType.Impl(new Key("create", "stationary_contraption"), ContraptionEntity.class));
-        }
-        if (config.isRenderCopycats()) {
-            BlockRendererType.REGISTRY.register(CopycatRenderer.TYPE);
-            BlockEntityType.REGISTRY.register(new CopycatBlockType.Impl(new Key("create", "copycat"), CopycatBlockEntity.class));
-        }
-        if (config.isRenderTracks()) {
-            BlockRendererType.REGISTRY.register(TrackRenderer.TYPE);
-            BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "track"), TrackEntity.class));
-            ResourcePackExtensionType.REGISTRY.register(TrackMeshExtension.TYPE);
-        }
-        if (config.isRenderChainConveyors()) {
-            BlockRendererType.REGISTRY.register(ChainConveyorRenderer.TYPE);
-            BlockEntityType.REGISTRY.register(new ChainConveyorBlockType.Impl(new Key("create", "chain_conveyor"), ChainConveyorEntity.class));
-        }
-        if (config.isRenderDisplayBoards()) {
-            ResourcePackExtensionType.REGISTRY.register(FontAtlasExtension.TYPE);
-            ResourcePackExtensionType.REGISTRY.register(LangExtension.TYPE);
-            BlockRendererType.REGISTRY.register(DisplayBoardTextRenderer.TYPE);
-            BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "flap_display"), DisplayBoardEntity.class));
-        }
+        EntityRendererType.REGISTRY.register(ContraptionEntityRenderer.TYPE);
+        EntityType.REGISTRY.register(new EntityType.Impl(new Key("create", "stationary_contraption"), ContraptionEntity.class));
+
+        BlockRendererType.REGISTRY.register(CopycatRenderer.TYPE);
+        BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "copycat"), CopycatBlockEntity.class));
+
+        // Copycats+ block entity types — same NBT format (Material {Name, Properties})
+        BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("copycats", "copycat"), CopycatBlockEntity.class));
+        BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("copycats", "multistate_copycat"), CopycatBlockEntity.class));
+        BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("copycats", "multistate_ladder_copycat"), CopycatBlockEntity.class));
+
+        BlockRendererType.REGISTRY.register(TrackRenderer.TYPE);
+        BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "track"), TrackEntity.class));
+        ResourcePackExtensionType.REGISTRY.register(TrackMeshExtension.TYPE);
+
+        BlockRendererType.REGISTRY.register(ChainConveyorRenderer.TYPE);
+        BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "chain_conveyor"), ChainConveyorEntity.class));
+
+        ResourcePackExtensionType.REGISTRY.register(FontAtlasExtension.TYPE);
+        ResourcePackExtensionType.REGISTRY.register(LangExtension.TYPE);
+        BlockRendererType.REGISTRY.register(DisplayBoardTextRenderer.TYPE);
+        BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "flap_display"), DisplayBoardEntity.class));
     }
 
     @Override
     public void run() {
         try {
             fileWatchers = new ArrayList<>();
+            addBluemapRegistryValues();
+
             BlueMapAPI.onEnable(api ->
             {
                 Path configFolder = ((BlueMapAPIImpl) api)
@@ -82,8 +79,6 @@ public class CreateEntityAddon implements Runnable {
                     AddonLog.error("failed to load config, using defaults", e);
                     config = new Config();
                 }
-
-                addBluemapRegistryValues();
 
                 BlueMapService service = ((BlueMapAPIImpl) api).blueMapService();
 
@@ -116,8 +111,7 @@ public class CreateEntityAddon implements Runnable {
                 }
             });
         } catch (Exception ex) {
-            AddonLog.error("failed to start FileWatcher", ex);
+            AddonLog.error("failed to start watchers", ex);
         }
-
     }
 }
