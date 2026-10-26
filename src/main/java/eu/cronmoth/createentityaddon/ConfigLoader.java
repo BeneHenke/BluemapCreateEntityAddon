@@ -44,7 +44,7 @@ public class ConfigLoader {
         AddonLog.info("created default config at " + configPath);
     }
 
-    public void load() throws IOException {
+    public void load() {
         HoconConfigurationLoader loader = HoconConfigurationLoader.builder()
                 .path(configPath)
                 .build();
