@@ -12,8 +12,8 @@ import de.bluecolored.bluemap.core.world.mca.blockentity.BlockEntityType;
 import de.bluecolored.bluemap.core.world.mca.entity.EntityType;
 import eu.cronmoth.createentityaddon.rendering.chainconveyor.ChainConveyorRenderer;
 import eu.cronmoth.createentityaddon.rendering.chainconveyor.entitymodel.ChainConveyorEntity;
-import eu.cronmoth.createentityaddon.rendering.copycats.entitymodel.CopycatBlockEntity;
 import eu.cronmoth.createentityaddon.rendering.copycats.CopycatRenderer;
+import eu.cronmoth.createentityaddon.rendering.copycats.entitymodel.CopycatBlockEntity;
 import eu.cronmoth.createentityaddon.rendering.contraptions.entitymodel.ContraptionEntity;
 import eu.cronmoth.createentityaddon.rendering.contraptions.ContraptionEntityRenderer;
 import eu.cronmoth.createentityaddon.rendering.displayboard.DisplayBoardTextRenderer;
@@ -39,10 +39,9 @@ public class CreateEntityAddon implements Runnable {
         EntityRendererType.REGISTRY.register(ContraptionEntityRenderer.TYPE);
         EntityType.REGISTRY.register(new EntityType.Impl(new Key("create", "stationary_contraption"), ContraptionEntity.class));
 
+        // Copycats (Copycats+ and Create native) — rendered by the dedicated CopycatRenderer
         BlockRendererType.REGISTRY.register(CopycatRenderer.TYPE);
         BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "copycat"), CopycatBlockEntity.class));
-
-        // Copycats+ block entity types — same NBT format (Material {Name, Properties})
         BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("copycats", "copycat"), CopycatBlockEntity.class));
         BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("copycats", "multistate_copycat"), CopycatBlockEntity.class));
         BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("copycats", "multistate_ladder_copycat"), CopycatBlockEntity.class));

@@ -3,7 +3,11 @@ package eu.cronmoth.createentityaddon.rendering.copycats;
 import de.bluecolored.bluemap.core.world.BlockState;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
 
-//Wrapper class to get tint for copied block
+/**
+ * A view of the copycat block that reports the material's blockstate, so that
+ * BlueMap's block color calculator resolves tint colors (grass, foliage, ...)
+ * for the copied material.
+ */
 class MaterialStateBlock extends BlockNeighborhood {
 
     private final BlockState materialState;
