@@ -1,8 +1,7 @@
 package eu.cronmoth.createentityaddon.rendering.copycats;
 
-import com.flowpowered.math.TrigMath;
 import com.flowpowered.math.vector.Vector3f;
-import com.flowpowered.math.vector.Vector3i;
+import com.flowpowered.math.vector.Vector4f;
 
 import de.bluecolored.bluemap.core.map.TextureGallery;
 import de.bluecolored.bluemap.core.map.hires.RenderSettings;
@@ -13,28 +12,29 @@ import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
 import de.bluecolored.bluemap.core.resources.BlockColorCalculatorFactory;
 import de.bluecolored.bluemap.core.resources.ResourcePath;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
+import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.BlockState;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variant;
-import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variants;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Element;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Face;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.model.Model;
+import de.bluecolored.bluemap.core.resources.pack.resourcepack.texture.Texture;
 import de.bluecolored.bluemap.core.util.Direction;
 import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.util.math.Color;
 import de.bluecolored.bluemap.core.util.math.MatrixM4f;
-import de.bluecolored.bluemap.core.util.math.VectorM2f;
-import de.bluecolored.bluemap.core.util.math.VectorM3f;
-import de.bluecolored.bluemap.core.world.BlockState;
+import de.bluecolored.bluemap.core.world.BlockProperties;
 import de.bluecolored.bluemap.core.world.LightData;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
 import de.bluecolored.bluemap.core.world.block.ExtendedBlock;
 
+import eu.cronmoth.createentityaddon.rendering.contraptions.entitymodel.MaterialData;
 import eu.cronmoth.createentityaddon.rendering.copycats.entitymodel.CopycatBlockEntity;
+import eu.cronmoth.createentityaddon.rendering.copycats.shape.CopycatShapes;
+import eu.cronmoth.createentityaddon.rendering.copycats.shape.Piece;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 
 public class CopycatRenderer implements BlockRenderer {
 
@@ -42,641 +42,382 @@ public class CopycatRenderer implements BlockRenderer {
             new Key("create", "copycat"), CopycatRenderer::new
     );
 
-    private static final float BLOCK_SCALE = 1f / 16f;
+    private static final float EPS = 1e-4f;
 
     private final ResourcePack resourcePack;
     private final TextureGallery textureGallery;
+    private final RenderSettings renderSettings;
     private final BlockColorCalculatorFactory.BlockColorCalculator blockColorCalculator;
-    private final VectorM3f[] corners = new VectorM3f[8];
-
-    private BlockNeighborhood block;
-    private Variant variant;
-    private Model modelResource;
-    private TileModelView blockModel;
-    private float materialYRotation = 0f;
-    private BlockState materialBlockState;
 
     private final Color tintColor = new Color();
-    private final VectorM3f rotationRelativeBlockDirection = new VectorM3f(0, 0, 0);
+    private final Color mapColor = new Color();
+    private final Color tintResult = new Color();
 
-    private final MatrixM4f elementTransform = new MatrixM4f();
+    private BlockNeighborhood block;
+    private TileModelView blockModel;
+    private Color blockColor;
+    private float blockColorOpacity;
+
+    private de.bluecolored.bluemap.core.world.BlockState materialState;
 
     public CopycatRenderer(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings) {
         this.resourcePack = resourcePack;
         this.textureGallery = textureGallery;
+        this.renderSettings = renderSettings;
         this.blockColorCalculator = resourcePack.getColorCalculatorFactory().createCalculator();
-
-        for (int i = 0; i < corners.length; i++) corners[i] = new VectorM3f(0, 0, 0);
     }
 
     @Override
     public void render(BlockNeighborhood block, Variant variant, TileModelView blockModel, Color color) {
         this.block = block;
-        this.variant = variant;
         this.blockModel = blockModel;
-        float blockColorOpacity = 0f;
-        this.modelResource = variant.getModel().getResource(resourcePack::getModel);
-
-        if (!(block.getBlockEntity() instanceof CopycatBlockEntity entity)) return;
-        if (modelResource == null) return;
-
-        String half = block.getBlockState().getProperties().get("half"); // bottom or top
-        String facingStr = block.getBlockState().getProperties().get("facing");
-        Direction facing = Direction.fromString(facingStr);
-
-        String[] name = entity.getMaterial().getName().split(":");
-        Map<String,String> materialProperties = entity.getMaterial().getProperties();
-        //create BlockState for the copied block
-        this.materialBlockState = new BlockState(
-                entity.getMaterial().getName(),
-                materialProperties != null ? materialProperties : Map.of());
+        this.blockColor = color;
+        this.blockColorOpacity = 0f;
         this.tintColor.set(0, 0, 0, -1, true);
-        this.materialYRotation = resolveMaterialYRotation(materialBlockState);
-        Model copiedModel = resourcePack.getModel(new ResourcePath<>(name[0] + ":block/" + name[1]));
-        if (name[1].equals("copycat_base")) {
-            copiedModel = resourcePack.getModel(new ResourcePath<>(name[0] + ":block/copycat_base/block"));
-        }
 
-        if (copiedModel == null) return;
+        List<Piece> pieces = CopycatShapes.pieces(block.getBlockState());
+        if (pieces == null) return;
+
+        Object blockEntity = block.getBlockEntity();
+        if (!(blockEntity instanceof CopycatBlockEntity copycatsEntity)) return;
 
         int modelStart = blockModel.getStart();
-        Element[] elements = modelResource.getElements();
+        for (Piece piece : pieces) {
+            MaterialData material = copycatsEntity.getMaterial(piece.partKey());
+            if (material == null || material.getName() == null) continue;
 
-        if (elements != null) {
-            for (Element element : elements) {
-                buildModelElement(element, blockModel.initialize(), copiedModel, half, facing, materialProperties);
-            }
+            this.materialState = new de.bluecolored.bluemap.core.world.BlockState(
+                    material.getName(),
+                    material.getProperties() == null ? Map.of() : material.getProperties());
+            this.tintColor.set(0, 0, 0, -1, true); // tint resolves per material (per piece)
+            renderPiece(piece, materialState);
         }
 
-        if (color.a > 0) {
-            color.flatten().straight();
-            color.a = blockColorOpacity;
+        if (blockColor.a > 0) {
+            blockColor.flatten().straight();
+            blockColor.a = blockColorOpacity;
         }
-
         blockModel.initialize(modelStart);
         if (variant.isTransformed()) blockModel.transform(variant.getTransformMatrix());
     }
 
-    private float resolveMaterialYRotation(BlockState materialState) {
-        if (materialState.getProperties().isEmpty()) return 0f;
+    private void renderPiece(Piece piece, de.bluecolored.bluemap.core.world.BlockState materialState) {
+        BlockState stateResource = resourcePack.getBlockState(materialState);
+        if (stateResource == null) return;
 
-        de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.BlockState resolvedState = resourcePack.getBlockState(materialState);
-        if (resolvedState == null) return 0f;
+        final Variant[] selected = new Variant[1];
+        stateResource.forEach(materialState, block.getX(), block.getY(), block.getZ(), v -> selected[0] = v);
+        Variant materialVariant = selected[0];
+        if (materialVariant == null) return;
 
-        Variants variants = resolvedState.getVariants();
-        if (variants == null) return 0f;
+        Model model = materialVariant.getModel().getResource(resourcePack::getModel);
+        if (model == null || model.getElements() == null) return;
 
-        float[] result = {0f};
-        variants.forEach(materialState, 0, 0, 0, v -> result[0] = v.getY());
-        return result[0];
+        // the material variant transform (0..1 block space) has to be applied to the
+        // material geometry before cropping, so the crop happens in render space
+        MatrixM4f variantMatrix = materialVariant.isTransformed() ? materialVariant.getTransformMatrix() : null;
+
+        for (Element element : model.getElements()) {
+            if (element == null) continue;
+            renderElement(piece, element, model, variantMatrix);
+        }
     }
 
-    private Color resolveTintColor() {
-        if (tintColor.a >= 0) return tintColor;
-        if (materialBlockState == null) return tintColor.set(1f, 1f, 1f, 1f, true);
-        blockColorCalculator.getBlockColor(new MaterialStateBlock(block, materialBlockState), tintColor);
-        return tintColor;
-    }
-
-    private void buildModelElement(Element element, TileModelView model, Model copiedModel, String half, Direction facing, Map<String, String> materialProperties) {
-        boolean isStep = half != null;
-
+    private void renderElement(Piece piece, Element element, Model model, MatrixM4f variantMatrix) {
         Vector3f from = element.getFrom();
         Vector3f to = element.getTo();
+        double[] min = {
+                Math.min(from.getX(), to.getX()),
+                Math.min(from.getY(), to.getY()),
+                Math.min(from.getZ(), to.getZ())};
+        double[] max = {
+                Math.max(from.getX(), to.getX()),
+                Math.max(from.getY(), to.getY()),
+                Math.max(from.getZ(), to.getZ())};
 
-        float minX = Math.min(from.getX(), to.getX());
-        float minY = Math.min(from.getY(), to.getY());
-        float minZ = Math.min(from.getZ(), to.getZ());
-        float maxX = Math.max(from.getX(), to.getX());
-        float maxY = Math.max(from.getY(), to.getY());
-        float maxZ = Math.max(from.getZ(), to.getZ());
-
-        // Compute cube corners (ursprüngliche Position vor Transformation)
-        corners[0].set(minX, minY, minZ);
-        corners[1].set(minX, minY, maxZ);
-        corners[2].set(maxX, minY, minZ);
-        corners[3].set(maxX, minY, maxZ);
-        corners[4].set(minX, maxY, minZ);
-        corners[5].set(minX, maxY, maxZ);
-        corners[6].set(maxX, maxY, minZ);
-        corners[7].set(maxX, maxY, maxZ);
-
-        // Build transform matrix
-        MatrixM4f transform = buildElementTransform(element, isStep, half, facing);
-
-        // Apply rotation/translation to corners
-        for (int i = 0; i < 8; i++) transformCorner(corners[i], transform);
-
-        sortCornersByPosition(corners);
-
-        int start = model.getStart();
-        for (Direction dir : Direction.values()) {
-            VectorM3f[] faceCorners = getFaceCorners(corners, dir);
-            face(element, dir, faceCorners[0], faceCorners[1], faceCorners[2], faceCorners[3], copiedModel, materialProperties, facing);
+        MatrixM4f elementMatrix =
+                element.getRotation() != null && element.getRotation().getAngle() != 0f
+                        ? element.getRotation().getMatrix()
+                        : null;
+        if (elementMatrix != null && element.getRotation().getAngle() % 90f != 0f) {
+            return;
         }
 
-        model.initialize(start);
+        for (Direction d : Direction.values()) {
+            Face face = element.getFaces().get(d);
+            if (face == null) continue;
 
-        // Apply scaling
-        MatrixM4f scale = new MatrixM4f();
-        scale.scale(BLOCK_SCALE, BLOCK_SCALE, BLOCK_SCALE);
-        model.transform(scale);
-    }
+            int axis = axisOf(d);
+            int uAxis, vAxis;
+            boolean uFlip, vFlip;
+            switch (d) {
+                case DOWN -> { uAxis = 0; vAxis = 2; uFlip = false; vFlip = false; }
+                case UP -> { uAxis = 0; vAxis = 2; uFlip = false; vFlip = true; }
+                case NORTH -> { uAxis = 0; vAxis = 1; uFlip = true; vFlip = false; }
+                case SOUTH -> { uAxis = 0; vAxis = 1; uFlip = false; vFlip = false; }
+                case WEST -> { uAxis = 2; vAxis = 1; uFlip = false; vFlip = false; }
+                default -> { uAxis = 2; vAxis = 1; uFlip = true; vFlip = false; } // EAST
+            }
+            double plane = (d == Direction.UP || d == Direction.EAST || d == Direction.SOUTH)
+                    ? max[axis] : min[axis];
+            double sizeU = Math.max(max[uAxis] - min[uAxis], EPS);
+            double sizeV = Math.max(max[vAxis] - min[vAxis], EPS);
+            if (sizeU < EPS || sizeV < EPS) continue;
 
-    private MatrixM4f buildElementTransform(Element element, boolean isStep, String half, Direction facing) {
-        float offsetX = 0f;
-        float offsetY = 0f;
-        float offsetZ = 0f;
-
-        if ("top".equalsIgnoreCase(half)) offsetY = 8f;
-
-        MatrixM4f transform = elementTransform.copy(element.getRotation().getMatrix());
-        transform.translate(offsetX, offsetY, offsetZ);
-        transform.translate(-8f, -8f, -8f); // rotate around block center
-
-        if (facing != null) {
-            switch (facing) {
-                case SOUTH -> transform.rotate(180f, 0f, 1f, 0f);
-                case WEST -> transform.rotate(90f, 0f, 1f, 0f);
-                case EAST -> transform.rotate(-90f, 0f, 1f, 0f);
-                default -> {}
+            double[][] ring = cornerUVs(d, min[uAxis], max[uAxis], min[vAxis], max[vAxis]);
+            double[][] pos = new double[4][3];
+            float[][] uvs = new float[4][2];
+            Vector4f uvRaw = face.getUv();
+            float u1 = uvRaw.getX();
+            float u2 = uvRaw.getZ();
+            float vLow = uvRaw.getW();
+            float vHigh = uvRaw.getY();
+            for (int i = 0; i < 4; i++) {
+                double u = ring[i][0];
+                double v = ring[i][1];
+                pos[i][axis] = plane;
+                pos[i][uAxis] = u;
+                pos[i][vAxis] = v;
+                double fu = uFlip ? (max[uAxis] - u) / sizeU : (u - min[uAxis]) / sizeU;
+                double fv = vFlip ? (max[vAxis] - v) / sizeV : (v - min[vAxis]) / sizeV;
+                uvs[i][0] = (u1 + (float) fu * (u2 - u1)) / 16f;
+                uvs[i][1] = (vLow + (float) fv * (vHigh - vLow)) / 16f;
             }
 
-            if (!isStep) {
-                switch (facing) {
-                    case WEST -> transform.rotate(90f, 0f, 0f, 1f);
-                    case EAST -> transform.rotate(-90f, 0f, 0f, 1f);
-                    case NORTH -> transform.rotate(-90f, 1f, 0f, 0f);
-                    case SOUTH -> transform.rotate(90f, 1f, 0f, 0f);
-                    case DOWN -> transform.translate(0f, 13f, 0f);
-                    default -> {}
+            int steps = Math.floorMod(Math.floorDiv(face.getRotation(), 90), 4);
+            float[][] quadUvs = new float[4][];
+            for (int i = 0; i < 4; i++) quadUvs[i] = uvs[(steps + i) % 4];
+
+            for (int i = 0; i < 4; i++) {
+                if (elementMatrix != null) {
+                    pos[i] = applyMatrix(elementMatrix, pos[i][0], pos[i][1], pos[i][2]);
+                }
+                if (variantMatrix != null) {
+                    // variant transform matrices operate on 0..1 block space
+                    double[] t = applyMatrix(variantMatrix, pos[i][0] / 16, pos[i][1] / 16, pos[i][2] / 16);
+                    pos[i] = new double[]{t[0] * 16, t[1] * 16, t[2] * 16};
                 }
             }
+
+            Direction materialDir = mapDirection(d, elementMatrix, variantMatrix);
+            if (materialDir == null) continue;
+            int planeAxis = axisOf(materialDir);
+            boolean aligned = true;
+            for (int a = 0; a < 3; a++) {
+                double lo = Double.MAX_VALUE, hi = -Double.MAX_VALUE;
+                for (double[] p : pos) { lo = Math.min(lo, p[a]); hi = Math.max(hi, p[a]); }
+                boolean isPlane = a == planeAxis;
+                if (isPlane ? hi - lo > EPS : hi - lo > EPS && countDistinct(pos, a) > 2) aligned = false;
+            }
+            if (!aligned) continue;
+
+            if (piece.culledMaterialFaces().contains(materialDir)) continue;
+
+            double[] cropMin = piece.cropMin();
+            double[] cropMax = piece.cropMax();
+            double[] move = piece.move();
+            double[][] grad = new double[3][2];
+            int[][] edges = {{0, 1}, {1, 2}, {2, 3}, {3, 0}};
+            for (int[] e : edges) {
+                double[] p0 = pos[e[0]];
+                double[] p1 = pos[e[1]];
+                int diffAxis = -1;
+                for (int a = 0; a < 3; a++) {
+                    if (Math.abs(p1[a] - p0[a]) > EPS) {
+                        if (diffAxis >= 0) { diffAxis = -1; break; }
+                        diffAxis = a;
+                    }
+                }
+                if (diffAxis < 0) continue;
+                double len = p1[diffAxis] - p0[diffAxis];
+                grad[diffAxis][0] = (quadUvs[e[1]][0] - quadUvs[e[0]][0]) / len;
+                grad[diffAxis][1] = (quadUvs[e[1]][1] - quadUvs[e[0]][1]) / len;
+            }
+            double[][] finalPos = new double[4][3];
+            for (int i = 0; i < 4; i++) {
+                for (int a = 0; a < 3; a++) {
+                    double clamped = clamp(pos[i][a], cropMin[a] * 16, cropMax[a] * 16);
+                    double delta = clamped - pos[i][a];
+                    quadUvs[i][0] += (float) (grad[a][0] * delta);
+                    quadUvs[i][1] += (float) (grad[a][1] * delta);
+                    finalPos[i][a] = clamped + move[a] * 16;
+                }
+            }
+
+            boolean collapsed = false;
+            for (int a = 0; a < 3; a++) {
+                if (a == planeAxis) continue;
+                double lo = Double.MAX_VALUE, hi = -Double.MAX_VALUE;
+                for (double[] p : finalPos) { lo = Math.min(lo, p[a]); hi = Math.max(hi, p[a]); }
+                if (hi - lo < EPS) collapsed = true;
+            }
+            if (collapsed) continue;
+
+            emitQuad(face, model, materialDir, finalPos, quadUvs, planeAxis);
         }
-
-        transform.translate(8f, 8f, 8f);
-        return transform;
     }
 
-    private void transformCorner(VectorM3f v, MatrixM4f m) {
-        float x = v.x, y = v.y, z = v.z;
-        float newX = x * m.m00 + y * m.m01 + z * m.m02 + 1f * m.m03;
-        float newY = x * m.m10 + y * m.m11 + z * m.m12 + 1f * m.m13;
-        float newZ = x * m.m20 + y * m.m21 + z * m.m22 + 1f * m.m23;
-        v.set(newX, newY, newZ);
-    }
-
-    private void sortCornersByPosition(VectorM3f[] c) {
-        float minX = Float.MAX_VALUE, maxX = Float.MIN_VALUE;
-        float minY = Float.MAX_VALUE, maxY = Float.MIN_VALUE;
-        float minZ = Float.MAX_VALUE, maxZ = Float.MIN_VALUE;
-
-        for (VectorM3f corner : c) {
-            minX = Math.min(minX, corner.x);
-            maxX = Math.max(maxX, corner.x);
-            minY = Math.min(minY, corner.y);
-            maxY = Math.max(maxY, corner.y);
-            minZ = Math.min(minZ, corner.z);
-            maxZ = Math.max(maxZ, corner.z);
+    private Direction mapDirection(Direction dir, MatrixM4f elementMatrix, MatrixM4f variantMatrix) {
+        double dx = dir.toVector().getX();
+        double dy = dir.toVector().getY();
+        double dz = dir.toVector().getZ();
+        if (elementMatrix != null) {
+            double[] t = applyMatrixLinear(elementMatrix, dx, dy, dz);
+            dx = t[0]; dy = t[1]; dz = t[2];
         }
-
-        c[0].set(minX, minY, minZ);
-        c[1].set(minX, minY, maxZ);
-        c[2].set(maxX, minY, maxZ);
-        c[3].set(maxX, minY, minZ);
-        c[4].set(minX, maxY, minZ);
-        c[5].set(minX, maxY, maxZ);
-        c[6].set(maxX, maxY, maxZ);
-        c[7].set(maxX, maxY, minZ);
+        if (variantMatrix != null) {
+            double[] t = applyMatrixLinear(variantMatrix, dx, dy, dz);
+            dx = t[0]; dy = t[1]; dz = t[2];
+        }
+        double ax = Math.abs(dx), ay = Math.abs(dy), az = Math.abs(dz);
+        if (ax < EPS && ay < EPS && az < EPS) return null;
+        if (ax >= ay && ax >= az) return dx > 0 ? Direction.EAST : Direction.WEST;
+        if (ay >= ax && ay >= az) return dy > 0 ? Direction.UP : Direction.DOWN;
+        return dz > 0 ? Direction.SOUTH : Direction.NORTH;
     }
 
-    private VectorM3f[] getFaceCorners(VectorM3f[] c, Direction dir) {
-        return switch (dir) {
-            case DOWN -> new VectorM3f[]{c[2], c[1], c[0], c[3]};
-            case UP -> new VectorM3f[]{c[7], c[4], c[5], c[6]};
-            case NORTH -> new VectorM3f[]{c[4], c[7], c[3], c[0]};
-            case SOUTH -> new VectorM3f[]{c[6], c[5], c[1], c[2]};
-            case WEST -> new VectorM3f[]{c[5], c[4], c[0], c[1]};
-            case EAST -> new VectorM3f[]{c[7], c[6], c[2], c[3]};
+    private static double[] applyMatrix(MatrixM4f m, double x, double y, double z) {
+        return new double[]{
+                x * m.m00 + y * m.m01 + z * m.m02 + m.m03,
+                x * m.m10 + y * m.m11 + z * m.m12 + m.m13,
+                x * m.m20 + y * m.m21 + z * m.m22 + m.m23
         };
     }
 
-    /**
-     * Draws one face of a copycat element as four patches, each taking its texture from the matching
-     * corner of the copied block's own face - that is what makes a copycat look like a slice cut out
-     * of the material rather than a shrunk-down copy of it.
-     */
-    private void face(
-            Element element,
-            Direction dir,
-            VectorM3f c0,
-            VectorM3f c1,
-            VectorM3f c2,
-            VectorM3f c3,
-            Model copiedModel,
-            Map<String, String> materialProperties,
-            Direction blockFacing) {
-        Face face = element.getFaces().get(dir);
-        if (face == null) return;
+    private static double[] applyMatrixLinear(MatrixM4f m, double x, double y, double z) {
+        return new double[]{
+                x * m.m00 + y * m.m01 + z * m.m02,
+                x * m.m10 + y * m.m11 + z * m.m12,
+                x * m.m20 + y * m.m21 + z * m.m22
+        };
+    }
 
-        String axis = materialProperties != null ? materialProperties.get("axis") : null;
-        String facingStr = materialProperties != null ? materialProperties.get("facing") : null;
-        Direction facing = facingStr != null ? Direction.fromString(facingStr) : null;
-        face = copiedFace(face, copiedModel, resolveTextureDirection(axis, facing, dir));
+    private void emitQuad(Face face, Model model, Direction materialDir,
+                          double[][] pos, float[][] quadUvs, int planeAxis) {
 
-        FaceSplit split = splitFace(c0, c1, c2, c3, blockFacing);
+        if (renderSettings.isRenderTopOnly() && materialDir != Direction.UP) return;
 
-        float[] ao = {1f, 1f, 1f, 1f};
-        if (modelResource.isAmbientocclusion()) {
-            ao = new float[]{testAo(c0, dir), testAo(c1, dir), testAo(c2, dir), testAo(c3, dir)};
+        // light of the block itself and of the faced neighbor
+        LightData ownLight = block.getLightData();
+        ExtendedBlock facedNeighbor = block.getNeighborBlock(
+                materialDir.toVector().getX(), materialDir.toVector().getY(), materialDir.toVector().getZ());
+        LightData facedLight = facedNeighbor.getLightData();
+        int sunLight = Math.max(ownLight.getSkyLight(), facedLight.getSkyLight());
+        int blockLight = Math.max(ownLight.getBlockLight(), facedLight.getBlockLight());
+
+        if (block.isRemoveIfCave() &&
+                (renderSettings.isCaveDetectionUsesBlockLight() ? Math.max(blockLight, sunLight) : sunLight) == 0) {
+            return;
         }
 
-        int rotationSteps = Math.floorMod(
-                -(Math.floorDiv(face.getRotation(), 90) + rotationStepsByAxisAndFacing(facing, axis, dir)),
-                4);
+        double finalPlane = pos[0][planeAxis] / 16;
+        boolean positiveFinal = materialDir == Direction.UP || materialDir == Direction.EAST || materialDir == Direction.SOUTH;
+        boolean atBoundary = positiveFinal ? finalPlane > 1 - EPS : finalPlane < EPS;
+        if (atBoundary) {
+            BlockProperties p = facedNeighbor.getProperties();
+            if (p.isCulling()) return;
+            if (p.getCullingIdentical() && facedNeighbor.getBlockState().equals(block.getBlockState())) return;
+        }
 
-        float tintR = 1f, tintG = 1f, tintB = 1f;
+        // texture
+        ResourcePath<Texture> texturePath = face.getTexture().getTexturePath(model.getTextures()::get);
+        if (texturePath == null) return;
+        int textureId = textureGallery.get(texturePath);
+
+        // tint (resolved for the material state)
+        float tR = 1f, tG = 1f, tB = 1f;
         if (face.getTintindex() >= 0) {
-            Color tint = resolveTintColor();
-            tintR = tint.r; tintG = tint.g; tintB = tint.b;
-        }
-        LightData light = block.getLightData();
-        Shading shading = new Shading(
-                textureGallery.get(face.getTexture().getTexturePath(copiedModel.getTextures()::get)),
-                light.getSkyLight(), light.getBlockLight(), tintR, tintG, tintB);
-
-        emitPatches(new VectorM3f[]{c0, c1, c2, c3}, split, patchUvs(split, rotationSteps), ao, shading);
-    }
-
-    /** The copied block's own face for this direction, or {@code face} unchanged if it has none. */
-    private static Face copiedFace(Face face, Model copiedModel, Direction textureDir) {
-        return Arrays.stream(copiedModel.getElements())
-                .filter(Objects::nonNull)
-                .map(e -> e.getFaces().get(textureDir))
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(face);
-    }
-
-    /**
-     * Where a face's four patches meet - the midpoints along each edge plus the centre, and how far
-     * along each edge that is, both as a fraction of the edge and as an extent in texture space.
-     */
-    private record FaceSplit(
-            VectorM3f c0c1, VectorM3f c0c3, VectorM3f c1c2, VectorM3f c2c3, VectorM3f center,
-            float alongC0C1, float alongC0C3,
-            float lowFactorC0C1, float highFactorC0C1,
-            float lowFactorC0C3, float highFactorC0C3) {}
-
-    /** Texture, light and tint shared by all four patches of a face. */
-    private record Shading(int texture, int sunLight, int blockLight, float r, float g, float b) {}
-
-    /**
-     * Splits a face into its four patches. The split does not have to sit in the middle: create
-     * builds its 3-thick panel from a 1px slice of the block's back and a 2px slice of its facing
-     * side, so an odd thickness is divided into whole pixels instead of 1.5/1.5.
-     */
-    private FaceSplit splitFace(VectorM3f c0, VectorM3f c1, VectorM3f c2, VectorM3f c3, Direction blockFacing) {
-        VectorM3f vecC0C1 = new VectorM3f(c1.x - c0.x, c1.y - c0.y, c1.z - c0.z);
-        float lengthC0C1 = Math.round(vecC0C1.length() * 100) / 100f;
-
-        VectorM3f vecC0C3 = new VectorM3f(c3.x - c0.x, c3.y - c0.y, c3.z - c0.z);
-        float lengthC0C3 = Math.round(vecC0C3.length() * 100) / 100f;
-
-        float lowC0C1 = splitLowLength(lengthC0C1, vecC0C1, blockFacing);
-        float lowC0C3 = splitLowLength(lengthC0C3, vecC0C3, blockFacing);
-        float highC0C1 = lengthC0C1 - lowC0C1;
-        float highC0C3 = lengthC0C3 - lowC0C3;
-
-        // where the split sits along each edge, as a fraction of its length
-        float alongC0C1 = lengthC0C1 > 0 ? lowC0C1 / lengthC0C1 : 0.5f;
-        float alongC0C3 = lengthC0C3 > 0 ? lowC0C3 / lengthC0C3 : 0.5f;
-
-        VectorM3f center = new VectorM3f(
-                c0.x + alongC0C1 * vecC0C1.x + alongC0C3 * vecC0C3.x,
-                c0.y + alongC0C1 * vecC0C1.y + alongC0C3 * vecC0C3.y,
-                c0.z + alongC0C1 * vecC0C1.z + alongC0C3 * vecC0C3.z
-        );
-
-        // texture-space extent of each half (16 model-units span the whole texture)
-        return new FaceSplit(
-                lerpPoint(c0, c1, alongC0C1),
-                lerpPoint(c0, c3, alongC0C3),
-                lerpPoint(c1, c2, alongC0C3),
-                lerpPoint(c3, c2, alongC0C1),
-                center,
-                alongC0C1, alongC0C3,
-                lowC0C1 / 16f, highC0C1 / 16f,
-                lowC0C3 / 16f, highC0C3 / 16f);
-    }
-
-    /**
-     * The four patches' texture coordinates, in the order top-left, top-right, bottom-left,
-     * bottom-right. They belong to the patches at c1 / c0 / c2 / c3 respectively, so each one uses
-     * the half-extents of the edges that meet in its own corner.
-     */
-    private VectorM2f[][] patchUvs(FaceSplit split, int rotationSteps) {
-        float lowC0C1 = split.lowFactorC0C1(), highC0C1 = split.highFactorC0C1();
-        float lowC0C3 = split.lowFactorC0C3(), highC0C3 = split.highFactorC0C3();
-
-        VectorM2f[][] uvs = {
-                { // top left
-                        new VectorM2f(0, 0),
-                        new VectorM2f(highC0C1, 0),
-                        new VectorM2f(highC0C1, lowC0C3),
-                        new VectorM2f(0, lowC0C3)},
-                { // top right
-                        new VectorM2f(1 - lowC0C1, 0),
-                        new VectorM2f(1, 0),
-                        new VectorM2f(1, lowC0C3),
-                        new VectorM2f(1 - lowC0C1, lowC0C3)},
-                { // bottom left
-                        new VectorM2f(0, 1 - highC0C3),
-                        new VectorM2f(highC0C1, 1 - highC0C3),
-                        new VectorM2f(highC0C1, 1),
-                        new VectorM2f(0, 1)},
-                { // bottom right
-                        new VectorM2f(1 - lowC0C1, 1 - highC0C3),
-                        new VectorM2f(1, 1 - highC0C3),
-                        new VectorM2f(1, 1),
-                        new VectorM2f(1 - lowC0C1, 1)},
-        };
-        for (VectorM2f[] uv : uvs) rotateUVs(uv, rotationSteps);
-        return uvs;
-    }
-
-    /**
-     * Emits the four patches. Each corner of the face keeps its own AO; the split points get theirs
-     * interpolated at the same fractions the geometry is split at.
-     *
-     * @param corners the face's own four corners, c0 to c3
-     * @param uv      the patches from {@link #patchUvs}, top-left / top-right / bottom-left / bottom-right
-     * @param ao      ambient occlusion at c0 to c3
-     */
-    private void emitPatches(VectorM3f[] corners, FaceSplit split, VectorM2f[][] uv, float[] ao, Shading shading) {
-        VectorM3f c0 = corners[0], c1 = corners[1], c2 = corners[2], c3 = corners[3];
-        VectorM2f[] uvTL = uv[0], uvTR = uv[1], uvBL = uv[2], uvBR = uv[3];
-
-        float aoC0C1 = lerp(ao[0], ao[1], split.alongC0C1());
-        float aoC0C3 = lerp(ao[0], ao[3], split.alongC0C3());
-        float aoC1C2 = lerp(ao[1], ao[2], split.alongC0C3());
-        float aoC2C3 = lerp(ao[3], ao[2], split.alongC0C1());
-        float aoCenter = lerp(aoC0C1, aoC2C3, split.alongC0C3());
-
-        VectorM3f c0c1 = split.c0c1(), c0c3 = split.c0c3(), c1c2 = split.c1c2(), c2c3 = split.c2c3();
-        VectorM3f center = split.center();
-
-        emitQuad( // top right
-                new VHelper(c0, uvTR[1], ao[0]),
-                new VHelper(c0c1, uvTR[0], aoC0C1),
-                new VHelper(center, uvTR[3], aoCenter),
-                new VHelper(c0c3, uvTR[2], aoC0C3),
-                shading);
-
-        emitQuad( // top left
-                new VHelper(c0c1, uvTL[1], aoC0C1),
-                new VHelper(c1, uvTL[0], ao[1]),
-                new VHelper(c1c2, uvTL[3], aoC1C2),
-                new VHelper(center, uvTL[2], aoCenter),
-                shading);
-
-        emitQuad( // bottom right
-                new VHelper(c0c3, uvBR[1], aoC0C3),
-                new VHelper(center, uvBR[0], aoCenter),
-                new VHelper(c2c3, uvBR[3], aoC2C3),
-                new VHelper(c3, uvBR[2], ao[3]),
-                shading);
-
-        emitQuad( // bottom left
-                new VHelper(center, uvBL[1], aoCenter),
-                new VHelper(c1c2, uvBL[0], aoC1C2),
-                new VHelper(c2, uvBL[3], ao[2]),
-                new VHelper(c2c3, uvBL[2], aoC2C3),
-                shading);
-    }
-
-    private float splitLowLength(float length, VectorM3f edge, Direction blockFacing) {
-        float half = length / 2f;
-        if (blockFacing == null) return half;
-
-        int pixels = Math.round(length);
-        if (Math.abs(length - pixels) > 1e-3f || pixels % 2 == 0) return half;
-
-        Vector3i normal = blockFacing.toVector();
-        float towardsFacing = edge.x * normal.getX() + edge.y * normal.getY() + edge.z * normal.getZ();
-        if (Math.abs(towardsFacing) < 1e-3f) return half; // edge runs across the facing, not along it
-
-        // walking c0 -> c3 towards the facing means the far end is the thick one, and vice versa
-        return towardsFacing > 0 ? pixels / 2 : pixels - pixels / 2;
-    }
-
-    private VectorM3f lerpPoint(VectorM3f a, VectorM3f b, float t) {
-        return new VectorM3f(
-                a.x + (b.x - a.x) * t,
-                a.y + (b.y - a.y) * t,
-                a.z + (b.z - a.z) * t
-        );
-    }
-
-    private Direction resolveTextureDirection(String axis, Direction facing, Direction face) {
-        if (axis==null && facing != null) {
-            if (facing == Direction.UP) {
-                return switch (face) {
-                    case NORTH -> Direction.DOWN;
-                    case EAST -> Direction.EAST;
-                    case SOUTH -> Direction.UP;
-                    case WEST -> Direction.WEST;
-                    case UP -> Direction.NORTH;
-                    case DOWN -> Direction.SOUTH;
-                };
+            if (tintColor.a < 0) {
+                blockColorCalculator.getBlockColor(new MaterialStateBlock(block, materialState), tintColor);
             }
-            if (facing == Direction.DOWN) {
-                return switch (face) {
-                    case NORTH -> Direction.UP;
-                    case EAST -> Direction.EAST;
-                    case SOUTH -> Direction.DOWN;
-                    case WEST -> Direction.WEST;
-                    case UP -> Direction.SOUTH;
-                    case DOWN -> Direction.NORTH;
-                };
-            }
-
-            int steps = Math.floorMod(Math.round(materialYRotation / 90f), 4);
-            return rotateHorizontalDirection(face, steps);
+            tR = tintColor.r; tG = tintColor.g; tB = tintColor.b;
         }
-        else if (axis != null) {
-            switch (axis) {
-                case "x" -> {
-                    if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
-                        return Direction.UP;
-                    } else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
-                        return Direction.NORTH;
-                    } else {
-                        return Direction.NORTH;
-                    }
-                }
-                case "y" -> {
-                    return face;
-                }
-                case "z" -> {
-                    if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
-                        return Direction.NORTH;
-                    } else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
-                        return Direction.UP;
-                    } else {
-                        return Direction.EAST;
-                    }
-                }
-            }
-        }
-        return face;
-    }
 
-    private Direction rotateHorizontalDirection(Direction dir, int steps) {
-        if (dir == Direction.UP || dir == Direction.DOWN) return dir;
-        Direction result = dir;
-        for (int i = 0; i < steps; i++) {
-            result = switch (result) {
-                case NORTH -> Direction.WEST;
-                case WEST -> Direction.SOUTH;
-                case SOUTH -> Direction.EAST;
-                case EAST -> Direction.NORTH;
-                default -> result;
-            };
-        }
-        return result;
-    }
-
-    private int rotationStepsByAxisAndFacing(Direction facing, String axis, Direction face){
-
-        if (axis==null && facing != null) {
-            if (facing == Direction.UP || facing == Direction.DOWN) return 0;
-            int steps = Math.floorMod(Math.round(materialYRotation / 90f), 4);
-            return (face == Direction.UP || face == Direction.DOWN) ? steps : 0;
-        }
-        else if (axis != null) {
-            switch (axis) {
-                case "x" -> {
-                    if (face.equals(Direction.EAST) || face.equals(Direction.WEST)) {
-                        return 0;
-                    } else if (face.equals(Direction.NORTH) || face.equals(Direction.SOUTH)) {
-                        return -1;
-                    } else {
-                        return -1;
-                    }
-                }
-                case "y" -> {
-                    return 0;
-                }
-                case "z" -> {
-                    return 0;
-                }
-            }
-        }
-        return 0;
-    }
-
-    private void rotateUVs (VectorM2f[] uvArray, int rotationSteps) {
-        for (VectorM2f uv : uvArray) {
-            rotateUV(uv, rotationSteps);
-        }
-    }
-
-    private void rotateUV (VectorM2f uv, int rotationSteps) {
-        for (int i = 0; i < rotationSteps; i++) {
-            float cx = TrigMath.cos(Math.PI/2), cy = TrigMath.sin(Math.PI/2);
-            uv.translate(-0.5f, -0.5f);
-            uv.rotate(cx, cy);
-            uv.translate(0.5f, 0.5f);
-        }
-    }
-
-    private void emitQuad(VHelper a, VHelper b, VHelper c, VHelper d, Shading shading) {
-        int tex = shading.texture();
-        int sunLight = shading.sunLight(), blockLight = shading.blockLight();
-        float tintR = shading.r(), tintG = shading.g(), tintB = shading.b();
         blockModel.initialize();
         blockModel.add(2);
         TileModel tileModel = blockModel.getTileModel();
+        int face1 = blockModel.getStart();
+        int face2 = face1 + 1;
 
-        int f1 = blockModel.getStart();
-        int f2 = f1 + 1;
+        tileModel.setPositions(face1,
+                (float) pos[0][0] / 16f, (float) pos[0][1] / 16f, (float) pos[0][2] / 16f,
+                (float) pos[1][0] / 16f, (float) pos[1][1] / 16f, (float) pos[1][2] / 16f,
+                (float) pos[2][0] / 16f, (float) pos[2][1] / 16f, (float) pos[2][2] / 16f);
+        tileModel.setPositions(face2,
+                (float) pos[0][0] / 16f, (float) pos[0][1] / 16f, (float) pos[0][2] / 16f,
+                (float) pos[2][0] / 16f, (float) pos[2][1] / 16f, (float) pos[2][2] / 16f,
+                (float) pos[3][0] / 16f, (float) pos[3][1] / 16f, (float) pos[3][2] / 16f);
 
-        tileModel.setPositions(f1, a.p.x, a.p.y, a.p.z, b.p.x, b.p.y, b.p.z, c.p.x, c.p.y, c.p.z);
-        tileModel.setPositions(f2, a.p.x, a.p.y, a.p.z, c.p.x, c.p.y, c.p.z, d.p.x, d.p.y, d.p.z);
+        tileModel.setUvs(face1, quadUvs[0][0], quadUvs[0][1], quadUvs[1][0], quadUvs[1][1],
+                quadUvs[2][0], quadUvs[2][1]);
+        tileModel.setUvs(face2, quadUvs[0][0], quadUvs[0][1], quadUvs[2][0], quadUvs[2][1],
+                quadUvs[3][0], quadUvs[3][1]);
 
-        tileModel.setUvs(f1, a.uv.x, a.uv.y, b.uv.x, b.uv.y, c.uv.x, c.uv.y);
-        tileModel.setUvs(f2, a.uv.x, a.uv.y, c.uv.x, c.uv.y, d.uv.x, d.uv.y);
+        tileModel.setMaterialIndex(face1, textureId);
+        tileModel.setMaterialIndex(face2, textureId);
 
-        tileModel.setMaterialIndex(f1, tex);
-        tileModel.setMaterialIndex(f2, tex);
+        tileModel.setColor(face1, tR, tG, tB);
+        tileModel.setColor(face2, tR, tG, tB);
 
-        tileModel.setColor(f1, tintR, tintG, tintB);
-        tileModel.setColor(f2, tintR, tintG, tintB);
+        tileModel.setBlocklight(face1, blockLight);
+        tileModel.setBlocklight(face2, blockLight);
 
-        tileModel.setBlocklight(f1, blockLight);
-        tileModel.setBlocklight(f2, blockLight);
+        tileModel.setSunlight(face1, sunLight);
+        tileModel.setSunlight(face2, sunLight);
 
-        tileModel.setSunlight(f1, sunLight);
-        tileModel.setSunlight(f2, sunLight);
+        tileModel.setAOs(face1, 1f, 1f, 1f);
+        tileModel.setAOs(face2, 1f, 1f, 1f);
 
-        tileModel.setAOs(f1, a.ao, b.ao, c.ao);
-        tileModel.setAOs(f2, a.ao, c.ao, d.ao);
-    }
-
-
-    private static float lerp(float a, float b, float t) {
-        return a + (b - a) * t;
-    }
-
-    private ExtendedBlock getRotationRelativeBlock(int dx, int dy, int dz) {
-        rotationRelativeBlockDirection.set(dx, dy, dz);
-        makeRotationRelative(rotationRelativeBlockDirection);
-        return block.getNeighborBlock(
-                Math.round(rotationRelativeBlockDirection.x),
-                Math.round(rotationRelativeBlockDirection.y),
-                Math.round(rotationRelativeBlockDirection.z)
-        );
-    }
-
-    private void makeRotationRelative(VectorM3f direction) {
-        if (variant.isTransformed()) direction.rotateAndScale(variant.getTransformMatrix());
-    }
-
-    /**
-     * Whether a coordinate sits on the block's lower (-1) or upper (1) edge, or inside it (0).
-     * Compared with a tolerance: the corners of a wall-mounted panel come out of a quaternion rotation
-     * as 15.999999 / 0.0000009, so an exact ==16 test would miss them and silently drop their occlusion.
-     */
-    private static int blockEdge(float coordinate) {
-        if (Math.abs(coordinate - 16f) < 1e-3f) return 1;
-        if (Math.abs(coordinate) < 1e-3f) return -1;
-        return 0;
-    }
-
-    private float testAo(VectorM3f vertex, Direction dir) {
-        Vector3i dirVec = dir.toVector();
-        int occluding = 0;
-
-        int x = blockEdge(vertex.x);
-        int y = blockEdge(vertex.y);
-        int z = blockEdge(vertex.z);
-
-        if (x * dirVec.getX() + y * dirVec.getY() > 0) {
-            if (getRotationRelativeBlock(x, y, 0).getProperties().isOccluding()) occluding++;
+        // accumulate map color (used for the flat map tiles) from up-facing faces
+        if (materialDir == Direction.UP) {
+            Texture texture = texturePath.getResource(resourcePack::getTexture);
+            if (texture != null) {
+                mapColor.set(texture.getColorPremultiplied());
+                if (tintColor.a >= 0) mapColor.multiply(tintColor);
+                float combinedLight = Math.max(sunLight / 15f, blockLight / 15f);
+                combinedLight = (1f - renderSettings.getAmbientLight()) * combinedLight + renderSettings.getAmbientLight();
+                mapColor.r *= combinedLight;
+                mapColor.g *= combinedLight;
+                mapColor.b *= combinedLight;
+                if (mapColor.a > blockColorOpacity) blockColorOpacity = mapColor.a;
+                blockColor.add(mapColor);
+            }
         }
-        if (x * dirVec.getX() + z * dirVec.getZ() > 0) {
-            if (getRotationRelativeBlock(x, 0, z).getProperties().isOccluding()) occluding++;
-        }
-        if (y * dirVec.getY() + z * dirVec.getZ() > 0) {
-            if (getRotationRelativeBlock(0, y, z).getProperties().isOccluding()) occluding++;
-        }
-        if (x * dirVec.getX() + y * dirVec.getY() + z * dirVec.getZ() > 0) {
-            if (getRotationRelativeBlock(x, y, z).getProperties().isOccluding()) occluding++;
-        }
-
-        if (occluding > 3) occluding = 3;
-        return Math.max(0f, Math.min(1f - occluding * 0.25f, 1f));
     }
 
+    private static double[][] cornerUVs(Direction dir, double uLo, double uHi, double vLo, double vHi) {
+        return switch (dir) {
+            case DOWN -> new double[][]{{uLo, vLo}, {uHi, vLo}, {uHi, vHi}, {uLo, vHi}};
+            case UP -> new double[][]{{uLo, vHi}, {uHi, vHi}, {uHi, vLo}, {uLo, vLo}};
+            case NORTH -> new double[][]{{uHi, vLo}, {uLo, vLo}, {uLo, vHi}, {uHi, vHi}};
+            case SOUTH -> new double[][]{{uLo, vLo}, {uHi, vLo}, {uHi, vHi}, {uLo, vHi}};
+            case WEST -> new double[][]{{uLo, vLo}, {uHi, vLo}, {uHi, vHi}, {uLo, vHi}};
+            default -> new double[][]{{uHi, vLo}, {uLo, vLo}, {uLo, vHi}, {uHi, vHi}}; // EAST
+        };
+    }
+
+    private static double clamp(double v, double min, double max) {
+        return Math.min(Math.max(v, min), max);
+    }
+
+    private static int countDistinct(double[][] pos, int axis) {
+        List<Double> values = new ArrayList<>();
+        for (double[] p : pos) {
+            double v = p[axis];
+            boolean found = false;
+            for (double e : values) {
+                if (Math.abs(e - v) <= EPS) { found = true; break; }
+            }
+            if (!found) values.add(v);
+        }
+        return values.size();
+    }
+
+    private static int axisOf(Direction dir) {
+        return switch (dir) {
+            case UP, DOWN -> 1;
+            case NORTH, SOUTH -> 2;
+            default -> 0;
+        };
+    }
 }
