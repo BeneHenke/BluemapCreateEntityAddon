@@ -72,7 +72,9 @@ public class ContraptionEntityRenderer implements EntityRenderer {
 
         tileModel.initialize(modelStart);
         applyBearingRotation(contraption, tileModel);
-        compensateEntityRotationHarness(tileModel);
+        if (!contraption.isTrain()) {
+            compensateEntityRotationHarness(tileModel);
+        }
     }
 
     private static void applyBearingRotation(ContraptionEntity contraption, TileModelView tileModel) {
