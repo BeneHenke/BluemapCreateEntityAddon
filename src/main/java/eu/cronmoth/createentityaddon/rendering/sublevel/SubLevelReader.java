@@ -78,14 +78,21 @@ public class SubLevelReader {
         SubLevelBuilder builder = new SubLevelBuilder();
         if (plot.chunks != null) {
             for (Map.Entry<String, Chunk> chunk : plot.chunks.entrySet()) {
-                if (chunk.getValue().sections == null) continue;
+                Chunk chunkData = chunk.getValue();
                 long key = Long.parseLong(chunk.getKey());
                 int cx = (int) key;
                 int cz = (int) (key >> 32);
-                for (Map.Entry<String, Section> section : chunk.getValue().sections.entrySet()) {
-                    int sectionY = Integer.parseInt(section.getKey());
-                    readSection(section.getValue(),
-                            originX + cx * 16 - baseX, minY + sectionY * 16 - baseY, originZ + cz * 16 - baseZ, builder);
+                if (chunkData.sections != null) {
+                    for (Map.Entry<String, Section> section : chunkData.sections.entrySet()) {
+                        int sectionY = Integer.parseInt(section.getKey());
+                        readSection(section.getValue(),
+                                originX + cx * 16 - baseX, minY + sectionY * 16 - baseY, originZ + cz * 16 - baseZ, builder);
+                    }
+                }
+                if (chunkData.blockEntities != null) {
+                    for (SubLevelBlockEntity be : chunkData.blockEntities) {
+                        builder.addBlockEntity(be.x - baseX, be.y - baseY, be.z - baseZ, be);
+                    }
                 }
             }
         }

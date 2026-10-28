@@ -42,6 +42,7 @@ public class ContraptionBlock implements BlockAccess {
         if (block != null && block.getData() != null && block.getData().getId().contains("copycat")) {
             CopycatBlockEntity entity = new CopycatBlockEntity();
             entity.setMaterial(block.getData().getMaterial());
+            entity.setMaterialData(block.getData().getMaterialData());
             return entity;
         }
 
