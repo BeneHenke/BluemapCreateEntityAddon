@@ -3,6 +3,7 @@ package eu.cronmoth.createentityaddon;
 import de.bluecolored.bluemap.api.BlueMapAPI;
 import de.bluecolored.bluemap.common.BlueMapService;
 import de.bluecolored.bluemap.common.api.BlueMapAPIImpl;
+import com.technicjelle.BMUtils.BMNative.BMNConfigDirectory;
 import de.bluecolored.bluemap.core.map.BmMap;
 import de.bluecolored.bluemap.core.map.hires.RenderPassType;
 import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
@@ -68,10 +69,14 @@ public class CreateEntityAddon implements Runnable {
 
             BlueMapAPI.onEnable(api ->
             {
-                Path configFolder = ((BlueMapAPIImpl) api)
-                        .plugin()
-                        .getServerInterface()
-                        .getConfigFolder();
+                Path configFolder;
+                try {
+                    configFolder = BMNConfigDirectory.getAllocatedDirectory(api, CreateEntityAddon.class.getClassLoader());
+                } catch (IOException e) {
+                    AddonLog.error("failed to resolve addon config directory, falling back to ./createentityaddon", e);
+                    configFolder = Path.of("createentityaddon");
+                }
+                AddonLog.info("using addon config folder " + configFolder.toAbsolutePath());
 
                 try {
                     config = new ConfigLoader(configFolder).getConfig();

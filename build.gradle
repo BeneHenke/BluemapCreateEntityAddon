@@ -127,6 +127,7 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.46")
     annotationProcessor("org.projectlombok:lombok:1.18.46")
     addonBundle("org.spongepowered:configurate-hocon:4.2.0")
+    addonBundle("com.technicjelle:BMUtils:5.1.0")
 }
 
 configurations.all {
