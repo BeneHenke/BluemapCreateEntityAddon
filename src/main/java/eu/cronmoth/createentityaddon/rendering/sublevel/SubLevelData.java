@@ -1,6 +1,7 @@
 package eu.cronmoth.createentityaddon.rendering.sublevel;
 
 import de.bluecolored.bluemap.core.world.BlockState;
+import eu.cronmoth.createentityaddon.rendering.sublevel.nbt.SubLevelBlockEntity;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,8 +22,11 @@ public class SubLevelData {
     final int[] xs, ys, zs, states;
     private final Map<Long, Integer> lookup;
 
+    private final Map<Long, SubLevelBlockEntity> blockEntities;
+
     SubLevelData(UUID uuid, double[] position, double[] orientation, double[] pivot,
-                 BlockState[] palette, int[] xs, int[] ys, int[] zs, int[] states) {
+                 BlockState[] palette, int[] xs, int[] ys, int[] zs, int[] states,
+                 int[] beXs, int[] beYs, int[] beZs, SubLevelBlockEntity[] blockEntities) {
         this.uuid = uuid;
         this.position = position;
         this.orientation = orientation;
@@ -38,6 +42,9 @@ public class SubLevelData {
 
         this.lookup = new HashMap<>(Math.max(16, xs.length * 2));
         for (int i = 0; i < xs.length; i++) lookup.put(key(xs[i], ys[i], zs[i]), states[i]);
+
+        this.blockEntities = new HashMap<>(Math.max(16, beXs.length * 2));
+        for (int i = 0; i < beXs.length; i++) this.blockEntities.put(key(beXs[i], beYs[i], beZs[i]), blockEntities[i]);
     }
 
     int blockCount() {
@@ -47,6 +54,10 @@ public class SubLevelData {
     int stateAt(int x, int y, int z) {
         Integer s = lookup.get(key(x, y, z));
         return s == null ? -1 : s;
+    }
+
+    SubLevelBlockEntity blockEntityAt(int x, int y, int z) {
+        return blockEntities.get(key(x, y, z));
     }
 
     private static long key(int x, int y, int z) {
