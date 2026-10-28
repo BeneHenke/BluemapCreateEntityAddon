@@ -40,6 +40,7 @@ public class CreateEntityAddon implements Runnable {
     private void addBluemapRegistryValues() {
         EntityRendererType.REGISTRY.register(ContraptionEntityRenderer.TYPE);
         EntityType.REGISTRY.register(new EntityType.Impl(new Key("create", "stationary_contraption"), ContraptionEntity.class));
+        EntityType.REGISTRY.register(new EntityType.Impl(new Key("aeronautics", "propeller_bearing_contraption"), ContraptionEntity.class));
 
         // Copycats (Copycats+ and Create native) — rendered by the dedicated CopycatRenderer
         BlockRendererType.REGISTRY.register(CopycatRenderer.TYPE);

@@ -21,8 +21,8 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build with Gradle
-        run: ./gradlew build
+      - name: Build addon jar
+        run: ./gradlew addonJar
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
