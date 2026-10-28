@@ -1,0 +1,5 @@
+{
+  "parts": [
+    { "renderer": "create:contraption" }
+  ]
+}
