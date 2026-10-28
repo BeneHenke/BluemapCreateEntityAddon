@@ -1,5 +1,6 @@
 package eu.cronmoth.createentityaddon.rendering.sublevel.nbt;
 
+import de.bluecolored.bluemap.core.world.BlockEntity;
 import de.bluecolored.bluenbt.NBTName;
 
 import java.util.List;
@@ -11,5 +12,5 @@ public class Chunk {
     public Map<String, Section> sections;
 
     /** Block entities with absolute world coordinates. */
-    @NBTName("block_entities") public List<SubLevelBlockEntity> blockEntities;
+    @NBTName("block_entities") public List<BlockEntity> blockEntities;
 }

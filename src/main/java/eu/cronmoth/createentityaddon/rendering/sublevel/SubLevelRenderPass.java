@@ -19,6 +19,7 @@ import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
 import de.bluecolored.bluemap.core.world.mca.MCAWorld;
 import eu.cronmoth.createentityaddon.AddonLog;
 import eu.cronmoth.createentityaddon.CreateEntityAddon;
+import eu.cronmoth.createentityaddon.rendering.contraptions.ContraptionEntityRenderer;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -43,12 +44,14 @@ public class SubLevelRenderPass implements RenderPass {
 
     private final ResourcePack resourcePack;
     private final RenderSettings renderSettings;
-    private final BlockStateModelRenderer blockRenderer;
+    private final ThreadLocal<BlockStateModelRenderer> blockRenderer;
+    private final ContraptionEntityRenderer contraptionRenderer;
 
     public SubLevelRenderPass(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings) {
         this.resourcePack = resourcePack;
         this.renderSettings = renderSettings;
-        this.blockRenderer = new BlockStateModelRenderer(resourcePack, textureGallery, renderSettings);
+        this.blockRenderer = ThreadLocal.withInitial(() -> new BlockStateModelRenderer(resourcePack, textureGallery, renderSettings));
+        this.contraptionRenderer = new ContraptionEntityRenderer(resourcePack, textureGallery, renderSettings);
     }
 
     @Override
@@ -126,7 +129,7 @@ public class SubLevelRenderPass implements RenderPass {
     }
 
     private void renderShip(World world, SubLevelData ship, Vector3i modelAnchor, TileModelView tileModel, boolean bakeTransform) {
-        BlockStateModelRenderer renderer = blockRenderer;
+        BlockStateModelRenderer renderer = blockRenderer.get();
         Color color = new Color();
 
         int wx = (int) Math.floor(ship.position[0]);
@@ -143,9 +146,20 @@ public class SubLevelRenderPass implements RenderPass {
             block.set(nx, ny, nz);
 
             tileModel.initialize();
-            blockRenderer.render(block, tileModel, color);
+            renderer.render(block, tileModel, color);
             tileModel.translate(ship.xs[i], ship.ys[i], ship.zs[i]);
         }
+
+        // Render contraption entities (static Create contraptions inside the sub-level)
+        for (SublevelContraption sc : ship.contraptions) {
+            tileModel.initialize();
+            BlockNeighborhood neighborhood = new BlockNeighborhood(
+                    new SubLevelBlock(ship, wx, wy, wz), resourcePack, renderSettings, world.getDimensionType());
+            neighborhood.set(wx + sc.localX, wy + sc.localY, wz + sc.localZ);
+            contraptionRenderer.render(sc.entity, neighborhood, null, tileModel);
+            tileModel.translate(sc.localX, sc.localY, sc.localZ);
+        }
+
         tileModel.initialize(modelStart);
 
         MatrixM4f pose = new MatrixM4f().identity()

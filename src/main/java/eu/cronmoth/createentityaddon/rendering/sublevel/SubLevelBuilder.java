@@ -1,8 +1,8 @@
 package eu.cronmoth.createentityaddon.rendering.sublevel;
 
 import de.bluecolored.bluemap.core.util.Key;
+import de.bluecolored.bluemap.core.world.BlockEntity;
 import de.bluecolored.bluemap.core.world.BlockState;
-import eu.cronmoth.createentityaddon.rendering.sublevel.nbt.SubLevelBlockEntity;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,7 +25,9 @@ class SubLevelBuilder {
     private final List<Integer> beXs = new ArrayList<>();
     private final List<Integer> beYs = new ArrayList<>();
     private final List<Integer> beZs = new ArrayList<>();
-    private final List<SubLevelBlockEntity> blockEntities = new ArrayList<>();
+    private final List<BlockEntity> blockEntities = new ArrayList<>();
+
+    private final List<SublevelContraption> contraptions = new ArrayList<>();
 
     int palette(String name, Map<String, String> properties) {
         String key = name + new TreeMap<>(properties);
@@ -42,11 +44,15 @@ class SubLevelBuilder {
         states.add(state);
     }
 
-    void addBlockEntity(int x, int y, int z, SubLevelBlockEntity be) {
+    void addBlockEntity(int x, int y, int z, BlockEntity be) {
         beXs.add(x);
         beYs.add(y);
         beZs.add(z);
         blockEntities.add(be);
+    }
+
+    void addContraption(SublevelContraption c) {
+        contraptions.add(c);
     }
 
     SubLevelData build(UUID uuid, double[] position, double[] orientation, double[] pivot) {
@@ -54,7 +60,8 @@ class SubLevelBuilder {
                 palette.toArray(new BlockState[0]),
                 toIntArray(xs), toIntArray(ys), toIntArray(zs), toIntArray(states),
                 toIntArray(beXs), toIntArray(beYs), toIntArray(beZs),
-                blockEntities.toArray(new SubLevelBlockEntity[0]));
+                blockEntities.toArray(new BlockEntity[0]),
+                List.copyOf(contraptions));
     }
 
     private static int[] toIntArray(List<Integer> list) {
