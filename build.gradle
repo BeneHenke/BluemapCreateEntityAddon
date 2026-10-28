@@ -3,7 +3,6 @@ plugins {
     id 'maven-publish'
     id 'net.neoforged.moddev' version '2.0.107'
     id 'idea'
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 tasks.named('wrapper', Wrapper).configure {
@@ -114,6 +113,11 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 // "optional", meaning it will not be pulled by dependents of this mod.
 configurations {
     runtimeClasspath.extendsFrom localRuntime
+    // Dependencies that should be bundled into the addon jar.
+    // The ModDevGradle plugin bloats runtimeClasspath with Minecraft + NeoForge,
+    // so we use a separate configuration to keep the jar small.
+    addonBundle
+    implementation.extendsFrom addonBundle
 }
 
 dependencies {
@@ -122,6 +126,7 @@ dependencies {
     compileOnly("de.bluecolored:bluemap-api:2.8.0")
     compileOnly("org.projectlombok:lombok:1.18.46")
     annotationProcessor("org.projectlombok:lombok:1.18.46")
+    addonBundle("org.spongepowered:configurate-hocon:4.2.0")
 }
 
 configurations.all {
@@ -189,17 +194,31 @@ idea {
 }
 tasks.withType(Jar).configureEach {
     zip64 = true
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-tasks.withType(com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).configureEach {
-    zip64 = true
+// Build the BlueMap addon jar: project classes + resources + bundled dependencies.
+// Only addonBundle dependencies are included — not the Minecraft/NeoForge tree
+// that ModDevGradle puts on the runtimeClasspath.
+tasks.register('addonJar', Jar) {
+    archiveClassifier.set('')
+    from sourceSets.main.output
+    from {
+        configurations.addonBundle.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    // Strip signature files from signed dependencies (configurate jars are signed);
+    // they become invalid once merged into our jar.
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
 }
 
 tasks.register("copyJarToBluemap", Copy) {
-    dependsOn(tasks.named("jar"))
-    from(tasks.named("jar").get().archiveFile)
+    dependsOn(tasks.named("addonJar"))
+    from(tasks.named("addonJar").get().archiveFile)
     into(layout.projectDirectory.dir("run/config/bluemap/packs"))
 }
+
 tasks.named("runServer").configure {
     dependsOn("copyJarToBluemap")
 }
