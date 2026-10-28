@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-class SubLevelData {
+public class SubLevelData {
 
     private static final int OFFSET = 1 << 20;
     private static final long MASK = (1L << 21) - 1;

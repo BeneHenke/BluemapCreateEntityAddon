@@ -7,13 +7,13 @@ import de.bluecolored.bluemap.core.world.biome.Biome;
 import de.bluecolored.bluemap.core.world.block.BlockAccess;
 import org.jetbrains.annotations.Nullable;
 
-class SubLevelBlock implements BlockAccess {
+public class SubLevelBlock implements BlockAccess {
 
     private final SubLevelData ship;
     private final int wx, wy, wz;
     private int x, y, z;
 
-    SubLevelBlock(SubLevelData ship, int wx, int wy, int wz) {
+    public SubLevelBlock(SubLevelData ship, int wx, int wy, int wz) {
         this.ship = ship;
         this.wx = wx;
         this.wy = wy;
