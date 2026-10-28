@@ -124,6 +124,7 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.30")
     annotationProcessor("org.projectlombok:lombok:1.18.30")
     addonBundle("org.spongepowered:configurate-hocon:4.2.0")
+    addonBundle("com.technicjelle:BMUtils:4.3.1")
 }
 // This block of code expands all declared replace properties in the specified resource targets.
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.
