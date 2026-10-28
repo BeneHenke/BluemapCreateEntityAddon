@@ -5,8 +5,6 @@ import de.bluecolored.bluemap.core.world.BlockState;
 import de.bluecolored.bluemap.core.world.LightData;
 import de.bluecolored.bluemap.core.world.biome.Biome;
 import de.bluecolored.bluemap.core.world.block.BlockAccess;
-import eu.cronmoth.createentityaddon.rendering.copycats.entitymodel.CopycatBlockEntity;
-import eu.cronmoth.createentityaddon.rendering.sublevel.nbt.SubLevelBlockEntity;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -86,14 +84,7 @@ public class SubLevelBlock implements BlockAccess {
         if (stateIndex < 0) return null;
         BlockState state = ship.palette[stateIndex];
         if (!state.getId().getFormatted().contains("copycat")) return null;
-
-        SubLevelBlockEntity be = ship.blockEntityAt(lx, ly, lz);
-        if (be == null) return null;
-
-        CopycatBlockEntity entity = new CopycatBlockEntity();
-        entity.setMaterial(be.material);
-        entity.setMaterialData(be.materialData);
-        return entity;
+        return ship.blockEntityAt(lx, ly, lz);
     }
 
     @Override
