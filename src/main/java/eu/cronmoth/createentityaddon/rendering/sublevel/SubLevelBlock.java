@@ -5,7 +5,12 @@ import de.bluecolored.bluemap.core.world.BlockState;
 import de.bluecolored.bluemap.core.world.LightData;
 import de.bluecolored.bluemap.core.world.biome.Biome;
 import de.bluecolored.bluemap.core.world.block.BlockAccess;
+import eu.cronmoth.createentityaddon.rendering.copycats.entitymodel.CopycatBlockEntity;
+import eu.cronmoth.createentityaddon.rendering.sublevel.nbt.SubLevelBlockEntity;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class SubLevelBlock implements BlockAccess {
 
@@ -54,7 +59,14 @@ public class SubLevelBlock implements BlockAccess {
     @Override
     public BlockState getBlockState() {
         int index = ship.stateAt(x - wx, y - wy, z - wz);
-        return index < 0 ? BlockState.AIR : ship.palette[index];
+        if (index < 0) return BlockState.AIR;
+        BlockState state = ship.palette[index];
+        if (state.getFormatted().contains("copycat")) {
+            Map<String, String> props = new HashMap<>(state.getProperties());
+            props.put("copycat", "true");
+            return new BlockState(state.getFormatted(), props);
+        }
+        return state;
     }
 
     @Override
@@ -69,7 +81,19 @@ public class SubLevelBlock implements BlockAccess {
 
     @Override
     public @Nullable BlockEntity getBlockEntity() {
-        return null;
+        int lx = x - wx, ly = y - wy, lz = z - wz;
+        int stateIndex = ship.stateAt(lx, ly, lz);
+        if (stateIndex < 0) return null;
+        BlockState state = ship.palette[stateIndex];
+        if (!state.getFormatted().contains("copycat")) return null;
+
+        SubLevelBlockEntity be = ship.blockEntityAt(lx, ly, lz);
+        if (be == null) return null;
+
+        CopycatBlockEntity entity = new CopycatBlockEntity();
+        entity.setMaterial(be.material);
+        entity.setMaterialData(be.materialData);
+        return entity;
     }
 
     @Override
