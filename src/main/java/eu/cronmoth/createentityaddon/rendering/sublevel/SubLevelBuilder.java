@@ -2,6 +2,7 @@ package eu.cronmoth.createentityaddon.rendering.sublevel;
 
 import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.world.BlockState;
+import eu.cronmoth.createentityaddon.rendering.sublevel.nbt.SubLevelBlockEntity;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,8 +16,16 @@ class SubLevelBuilder {
 
     private final List<BlockState> palette = new ArrayList<>();
     private final Map<String, Integer> paletteLookup = new HashMap<>();
-    private int[] xs = new int[1024], ys = new int[1024], zs = new int[1024], states = new int[1024];
-    private int size;
+
+    private final List<Integer> xs = new ArrayList<>();
+    private final List<Integer> ys = new ArrayList<>();
+    private final List<Integer> zs = new ArrayList<>();
+    private final List<Integer> states = new ArrayList<>();
+
+    private final List<Integer> beXs = new ArrayList<>();
+    private final List<Integer> beYs = new ArrayList<>();
+    private final List<Integer> beZs = new ArrayList<>();
+    private final List<SubLevelBlockEntity> blockEntities = new ArrayList<>();
 
     int palette(String name, Map<String, String> properties) {
         String key = name + new TreeMap<>(properties);
@@ -27,22 +36,30 @@ class SubLevelBuilder {
     }
 
     void add(int x, int y, int z, int state) {
-        if (size == xs.length) {
-            int n = size * 2;
-            xs = Arrays.copyOf(xs, n);
-            ys = Arrays.copyOf(ys, n);
-            zs = Arrays.copyOf(zs, n);
-            states = Arrays.copyOf(states, n);
-        }
-        xs[size] = x;
-        ys[size] = y;
-        zs[size] = z;
-        states[size++] = state;
+        xs.add(x);
+        ys.add(y);
+        zs.add(z);
+        states.add(state);
+    }
+
+    void addBlockEntity(int x, int y, int z, SubLevelBlockEntity be) {
+        beXs.add(x);
+        beYs.add(y);
+        beZs.add(z);
+        blockEntities.add(be);
     }
 
     SubLevelData build(UUID uuid, double[] position, double[] orientation, double[] pivot) {
         return new SubLevelData(uuid, position, orientation, pivot,
                 palette.toArray(new BlockState[0]),
-                Arrays.copyOf(xs, size), Arrays.copyOf(ys, size), Arrays.copyOf(zs, size), Arrays.copyOf(states, size));
+                toIntArray(xs), toIntArray(ys), toIntArray(zs), toIntArray(states),
+                toIntArray(beXs), toIntArray(beYs), toIntArray(beZs),
+                blockEntities.toArray(new SubLevelBlockEntity[0]));
+    }
+
+    private static int[] toIntArray(List<Integer> list) {
+        int[] arr = new int[list.size()];
+        for (int i = 0; i < arr.length; i++) arr[i] = list.get(i);
+        return arr;
     }
 }
