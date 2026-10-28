@@ -17,7 +17,7 @@ import java.util.zip.InflaterInputStream;
  * Reads Sable {@code sublevels/*.slvls} files: an MCA-like container (1024 header entries of
  * 3-byte sector offset + 1-byte sector count, 4096-byte sectors) holding one gzip-NBT sub-level per entry.
  */
-class SubLevelReader {
+public class SubLevelReader {
 
     private static final int SECTOR = 4096;
     /** Plot origin in blocks for plot (0,0); each plot spans {@code 1 << (log_size + 4)} blocks. */
@@ -27,11 +27,11 @@ class SubLevelReader {
 
     private final int minY;
 
-    SubLevelReader(int minY) {
+    public SubLevelReader(int minY) {
         this.minY = minY;
     }
 
-    List<SubLevelData> readFile(Path file) throws IOException {
+    public List<SubLevelData> readFile(Path file) throws IOException {
         byte[] b = Files.readAllBytes(file);
         List<SubLevelData> result = new ArrayList<>();
         for (int i = 0; i < 1024 && i * 4 + 4 <= b.length; i++) {
