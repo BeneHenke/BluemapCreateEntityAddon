@@ -162,7 +162,7 @@ public class FileWatcher extends Thread {
         RenderSettings renderSettings = map.getMapSettings();
 
         BlockNeighborhood block = new BlockNeighborhood(new ContraptionBlock(null), resourcePack, renderSettings, map.getWorld().getDimensionType());
-        ContraptionEntityRenderer renderer = new ContraptionEntityRenderer(resourcePack, textureGallery, renderSettings);
+        ContraptionEntityRenderer renderer = new ContraptionEntityRenderer(resourcePack, textureGallery, renderSettings, true);
 
         ArrayTileModel arrayTileModel = new ArrayTileModel(100);
         TileModelView tileModelView = new TileModelView(arrayTileModel);

@@ -25,12 +25,19 @@ public class ContraptionEntityRenderer implements EntityRenderer {
     private final ResourcePack resourcePack;
     private final BlockStateModelRenderer blockRenderer;
     private final RenderSettings renderSettings;
+    private final boolean skipRotationCompensation;
 
 
     public ContraptionEntityRenderer(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings) {
+        this(resourcePack, textureGallery, renderSettings, false);
+    }
+
+    public ContraptionEntityRenderer(ResourcePack resourcePack, TextureGallery textureGallery, RenderSettings renderSettings,
+                                     boolean skipRotationCompensation) {
         this.resourcePack = resourcePack;
         this.blockRenderer = new BlockStateModelRenderer(resourcePack, textureGallery, renderSettings);
         this.renderSettings = renderSettings;
+        this.skipRotationCompensation = skipRotationCompensation;
     }
 
     @Override
@@ -72,7 +79,7 @@ public class ContraptionEntityRenderer implements EntityRenderer {
 
         tileModel.initialize(modelStart);
         applyBearingRotation(contraption, tileModel);
-        if (!contraption.isTrain()) {
+        if (!skipRotationCompensation) {
             compensateEntityRotationHarness(tileModel);
         }
     }

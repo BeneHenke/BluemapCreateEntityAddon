@@ -51,7 +51,7 @@ public class SubLevelRenderPass implements RenderPass {
         this.resourcePack = resourcePack;
         this.renderSettings = renderSettings;
         this.blockRenderer = ThreadLocal.withInitial(() -> new BlockStateModelRenderer(resourcePack, textureGallery, renderSettings));
-        this.contraptionRenderer = new ContraptionEntityRenderer(resourcePack, textureGallery, renderSettings);
+        this.contraptionRenderer = new ContraptionEntityRenderer(resourcePack, textureGallery, renderSettings, true);
     }
 
     @Override
