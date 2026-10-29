@@ -80,10 +80,6 @@ public class SubLevelBlock implements BlockAccess {
     @Override
     public @Nullable BlockEntity getBlockEntity() {
         int lx = x - wx, ly = y - wy, lz = z - wz;
-        int stateIndex = ship.stateAt(lx, ly, lz);
-        if (stateIndex < 0) return null;
-        BlockState state = ship.palette[stateIndex];
-        if (!state.getFormatted().contains("copycat")) return null;
         return ship.blockEntityAt(lx, ly, lz);
     }
 
