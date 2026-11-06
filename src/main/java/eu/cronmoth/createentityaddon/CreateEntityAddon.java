@@ -55,6 +55,8 @@ public class CreateEntityAddon implements Runnable {
         BlockRendererType.REGISTRY.register(ChainConveyorRenderer.TYPE);
         BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("create", "chain_conveyor"), ChainConveyorEntity.class));
 
+        BlockEntityType.REGISTRY.register(new BlockEntityType.Impl(new Key("createcasing", "chain_conveyor"), ChainConveyorEntity.class));
+
         ResourcePackExtensionType.REGISTRY.register(FontAtlasExtension.TYPE);
         ResourcePackExtensionType.REGISTRY.register(LangExtension.TYPE);
         BlockRendererType.REGISTRY.register(DisplayBoardTextRenderer.TYPE);

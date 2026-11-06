@@ -1,0 +1,15 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "createcasing:block/chain_conveyor/zinc/block"
+      }
+    },
+    {
+      "apply": {
+        "model": "",
+        "renderer": "create:chain_conveyor"
+      }
+    }
+  ]
+}

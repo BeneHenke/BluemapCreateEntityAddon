@@ -35,10 +35,6 @@ public class ChainConveyorRenderer implements BlockRenderer {
             ChainConveyorRenderer::new
     );
 
-    private static final String WHEEL = "chain_conveyor/wheel";
-    private static final String SHAFT = "chain_conveyor/shaft";
-    private static final String PORTS = "chain_conveyor/ports";
-
     private final ResourceModelRenderer modelRenderer;
     private final ResourcePack resourcePack;
     private final TextureGallery textureGallery;
@@ -57,17 +53,24 @@ public class ChainConveyorRenderer implements BlockRenderer {
         TrackMeshExtension ext = TrackMeshExtension.instance();
         if (ext == null) return;
 
+        // mesh/texture keys derive from the actual conveyor block (create:chain_conveyor,
+        // createcasing:<material>_chain_conveyor, ...), so each variant resolves its own assets
+        Key blockKey = block.getBlockState();
+        String wheel = meshKey(blockKey, "wheel");
+        String shaft = meshKey(blockKey, "shaft");
+
         LightData ld = block.getLightData();
         int[] light = {ld.getSkyLight(), ld.getBlockLight()};
 
-        emit(ext.mesh(WHEEL), new MatrixM4f().identity(), tileModel, light, tex(WHEEL));
-        emit(ext.mesh(SHAFT), new MatrixM4f().identity(), tileModel, light, tex(SHAFT));
+        emit(ext.mesh(wheel), new MatrixM4f().identity(), tileModel, light, tex(wheel, blockKey));
+        emit(ext.mesh(shaft), new MatrixM4f().identity(), tileModel, light, tex(shaft, blockKey));
 
         if (!(block.getBlockEntity() instanceof ChainConveyorEntity entity)) return;
         if (entity.getConnections().isEmpty()) return;
 
-        ObjMesh ports = ext.mesh(PORTS);
-        int[] portsTex = tex(PORTS);
+        String portsKey = meshKey(blockKey, "ports");
+        ObjMesh ports = ext.mesh(portsKey);
+        int[] portsTex = tex(portsKey, blockKey);
 
         for (int[] c : entity.getConnections()) {
             if (c == null || c.length < 3) continue;
@@ -117,19 +120,29 @@ public class ChainConveyorRenderer implements BlockRenderer {
         ObjMeshRenderer.emit(view, mesh, pose, light, tex, SIDE_AO);
     }
 
-    private int[] tex(String meshKey) {
+    private static String meshKey(Key blockKey, String part) {
+        return blockKey.getFormatted() + "/" + part;
+    }
+
+    private int[] tex(String meshKey, Key blockKey) {
         return texCache.computeIfAbsent(meshKey, k -> {
             TrackMeshExtension ext = TrackMeshExtension.instance();
             String[] keys = ext == null ? null : ext.slotKeys(k);
             if (keys == null || keys.length == 0) return new int[0];
 
             Map<String, TextureVariable> textures = null;
-            try {
-                Model m = resourcePack.getModel(new ResourcePath<>("create", "block/chain_conveyor/textures"));
-                if (m != null) textures = m.getTextures();
-            } catch (RuntimeException ignored) {}
+            for (ResourcePath<Model> candidate : textureModelCandidates(blockKey)) {
+                try {
+                    Model m = resourcePack.getModel(candidate);
+                    Map<String, TextureVariable> t = m == null ? null : m.getTextures();
+                    if (t != null && !t.isEmpty()) {
+                        textures = t;
+                        break;
+                    }
+                } catch (RuntimeException ignored) { /* try next candidate */ }
+            }
 
-            int fallback = textureGallery.get(new ResourcePath<>("create", "block/andesite_casing"));
+            int fallback = fallbackTexture(blockKey, textures);
             int[] out = new int[keys.length];
             for (int i = 0; i < keys.length; i++) {
                 TextureVariable v = textures == null ? null : textures.get(keys[i]);
@@ -138,6 +151,29 @@ public class ChainConveyorRenderer implements BlockRenderer {
             }
             return out;
         });
+    }
+
+    private static List<ResourcePath<Model>> textureModelCandidates(Key blockKey) {
+        String ns = blockKey.getNamespace();
+        String path = blockKey.getValue();
+        List<ResourcePath<Model>> out = new ArrayList<>();
+        if (!path.equals("chain_conveyor") && path.endsWith("_chain_conveyor")) {
+            String material = path.substring(0, path.length() - "_chain_conveyor".length());
+            out.add(new ResourcePath<>(ns, "block/chain_conveyor/" + material + "/wheel"));
+        }
+        out.add(new ResourcePath<>(ns, "block/" + path + "/textures"));
+        if (!(ns.equals("create") && path.equals("chain_conveyor")))
+            out.add(new ResourcePath<>("create", "block/chain_conveyor/textures"));
+        return out;
+    }
+
+    private int fallbackTexture(Key blockKey, Map<String, TextureVariable> textures) {
+        TextureVariable particle = textures == null ? null : textures.get("particle");
+        if (particle != null) return textureGallery.get(particle.getTexturePath(textures::get));
+        String path = blockKey.getValue();
+        String material = !path.equals("chain_conveyor") && path.endsWith("_chain_conveyor")
+                ? path.substring(0, path.length() - "_chain_conveyor".length()) : "andesite";
+        return textureGallery.get(new ResourcePath<>("create", "block/" + material + "_casing"));
     }
 
     private Variant chainVariant() {
